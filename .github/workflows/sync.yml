@@ -1,15 +1,10 @@
 name: Sync files to consumer repos
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/copilot-instructions.md'
-      - '.github/agents/**'
-      - '.github/skills/**'
-      - '.markdownlint.yaml'
-      - '.claude/agents/**'
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
 
 concurrency:
   group: file-sync
