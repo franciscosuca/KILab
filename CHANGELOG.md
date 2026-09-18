@@ -1,3 +1,9 @@
+## [1.15.0](https://github.com/franciscosuca/prompt-pack/compare/v1.14.0...v1.15.0) (2026-09-18)
+
+### Features
+
+* **add new skills for feature planning and task management. Remove deprecated skills that are not being used.:** feat(planning): add new skills for feature planning and task management. Remove deprecated skills that are not being used. ([fb6e1df](https://github.com/franciscosuca/prompt-pack/commit/fb6e1dfb20b30042cbc64a9d516739bf02784dd1))
+
 ## [1.14.0](https://github.com/franciscosuca/prompt-pack/compare/v1.13.0...v1.14.0) (2026-08-27)
 
 ### Features
