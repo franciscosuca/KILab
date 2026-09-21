@@ -1,0 +1,16 @@
+{
+  "providers": {
+    "lmstudio": {
+      "baseUrl": "http://localhost:11440/v1",
+      "api": "openai-completions",
+      "apiKey": "lm-studio",
+      "models": [
+        { "id": "qwen/qwen3.5-9b" },
+        { "id": "google/gemma-4-26b-a4b-qat" },
+        { "id": "qwen2.5-coder-0.5b-instruct-mlx@8bit:2" },
+        { "id": "qwen2.5-coder-0.5b-instruct-mlx@4bit:2" },
+        { "id": "laravel-13x-planner-qwen3-1.7b-lora" }
+      ]
+    }
+  }
+}

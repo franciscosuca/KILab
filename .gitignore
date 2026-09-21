@@ -1,3 +1,9 @@
 .DS_Store
 node_modules
 *.log
+.DS_Store
+model-evals/__pycache__/
+model-evals/*.pyc
+model-evals/*.pyo
+model-evals/*.pyd
+model-evals/.env

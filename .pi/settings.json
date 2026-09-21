@@ -1,0 +1,9 @@
+{
+  "theme": "dark",
+  "defaultProvider": "github-copilot",
+  "defaultModel": "gpt-5.6-luna",
+  "defaultThinkingLevel": "max",
+  "packages": [
+    "npm:pi-token-speed"
+  ]
+}

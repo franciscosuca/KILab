@@ -1,32 +1,41 @@
-# prompt-pack
+# KILab
 
-A curated starter pack for GitHub Copilot customization in VS Code, including reusable agents, focused skills, and MCP setup assets. It is designed to help teams standardize workflows quickly: copy the templates, adapt the prompts, and run with minimal setup.
+KILab is a curated prompt pack for AI-assisted software development. It contains reusable instructions, agent definitions, workflow skills, editor integrations, and local-model evaluation material for GitHub Copilot/VS Code, Claude Code, and Pi. Copy the pieces you need into a project and adapt them to its stack.
 
-## Agents
+## What's included
 
-- [orchestrator-fastapi](.github/agents/orchestrator-fastapi.agent.md): reviews FastAPI code with emphasis on security, correctness, async behavior, and architecture.
-- [playwright](.github/agents/playwright.agent.md): bootstraps and maintains Playwright E2E tests aligned with product changes.
-- [react.agent](.github/agents/react.agent.md): supports React architecture decisions, state ownership, and scalable refactors.
-- [vitest](.github/agents/vitest.agent.md): bootstraps and maintains Vitest unit/component tests aligned with product changes.
-- [test-oracle](.github/agents/test-oracle.agent.md): writes requirement-driven tests and acceptance gates before implementation.
-- [blind-implementer](.github/agents/blind-implementer.agent.md): implements from requirements without reading tests.
-- [orchestrator-react](.github/agents/orchestrator-react.agent.md): orchestrates end-to-end React feature delivery via test-oracle and blind-implementer.
-- [orchestrator-react-native](.github/agents/orchestrator-react-native.agent.md): converts a React web app into a React Native/Expo project.
-- [orchestrator-ios](.github/agents/orchestrator-ios.agent.md): converts a React web app into a native iOS Swift/SwiftUI project.
+- **GitHub Copilot and VS Code customization** — `.github/` contains general Copilot guidance, reusable agents, workflow skills, issue templates, and release automation.
+- **Claude Code configuration** — `.claude/` provides Claude-side agents, commands, hooks, and settings for similar development workflows. See the [Claude Code overview](.claude/README.md).
+- **Pi configuration** — `.pi/` contains project-local settings, a local model catalog, and extension configuration. Pi authentication remains local in `~/.pi/agent/auth.json`.
+- **Local AI evaluation** — `localai/` contains LM Studio and Inspect AI setup guides, VS Code context investigations, recorded results, and a repeatable custom model benchmark.
+- **MCP assets** — `.vscode/mcp.json` provides an MCP configuration template, while the [MCP setup guide](docs/MCP-SETUP.md) explains how to connect VS Code extensions and servers.
 
-## Skills
+## Agents and skills
 
-- [implementation-plan](.github/skills/implementation-plan/SKILL.md): generates short, easy-to-follow implementation plans in a strict format.
-- [protocol-integration-planner](.github/skills/protocol-integration-planner/SKILL.md): creates integration plans and effort estimates for new protocols.
-- [react-minor-changes](.github/skills/react-minor-changes/SKILL.md): applies low-risk React/TypeScript updates with concise reporting.
-- [release-check](.github/skills/release-check/SKILL.md): runs a pre-release validation sequence (lint, tests/build, semantic-release pipeline).
+Agents provide reusable roles for orchestration, implementation, testing, framework-specific development, and platform integrations. Skills provide focused workflows for feature planning, test setup, scoped changes, and release validation.
 
-## MCP
+The [agent overview](.github/agents/README.md) documents the available delegation model. Browse the [agents](.github/agents) and [skills](.github/skills) directories for the current definitions without duplicating their full catalog here.
 
-- [MCP Servers Config](.vscode/mcp.json): VS Code MCP server configuration template (currently includes `notion` and `stitch`, plus a token input).
-- [VSCode MCP Setup](.vscode/readme.md): quick extension-based instructions to add `DevTools` and `GitHub` MCP in VS Code.
+## Quick start
 
----
+1. Choose the instructions, agents, skills, or editor configuration that fit your project.
+2. Copy them into the corresponding locations in the target repository, such as `.github/`, `.claude/`, `.pi/`, or `.vscode/`.
+3. Review and adapt prompts, paths, framework assumptions, and tool permissions before using them.
 
-**NOTE**:
-Drop any `.agent.md` or `SKILL.md` file into your own project to extend Copilot with project-specific workflows.
+## Local model evaluation
+
+The evaluation material is optional and independent of the prompt pack:
+
+- [Inspect AI + LM Studio guide](localai/inspect-benchmark/README.md) — set up local benchmark runs and inspect model behavior.
+- [Benchmark results](localai/inspect-benchmark/results.md) — recorded HumanEval results and throughput notes.
+- [Custom benchmark](localai/custom-benchmark/README.md) — compare coding models with a small, repeatable VS Code/Copilot task.
+
+The Inspect AI workflow uses `uv`, LM Studio, and Docker for sandboxed code execution. Consult the linked guides for their platform-specific requirements.
+
+## Release automation
+
+The repository uses Conventional Commits and semantic-release. The [release workflow](.github/workflows/release.yml) builds tags and updates release metadata on the configured branches.
+
+## License
+
+[KILab is released under the MIT License](LICENSE).
