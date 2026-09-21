@@ -59,34 +59,15 @@ those tokens go, cites the sources, and lists lower-overhead alternatives.
 - **Compact the conversation** before the window fills (the button in the
   session-info popover) so old turns stop competing with the fixed overhead.
 
-## Alternatives that consume far fewer system tokens (@thesis-verify avg. tool tokens)
+## Lower-overhead harness alternatives
 
-### UI alternatives
-
-Overhead figures are rough estimates of the default system prompt plus tool
-payload; actual values vary with configuration.
-
-| Tool | Why it uses less | Avg. system + tool tokens |
-|---|---|---:|
-| **LM Studio's own Chat tab** | No tool schemas at all; system prompt is a single editable string (can be empty) | ~0–100 |
-| [Continue.dev](https://www.continue.dev/) | Minimal default system prompt; tools/MCP are opt-in per config, not all-on | ~200–500 |
-| [Cline](https://cline.bot/) / [Roo Code](https://roocode.com/) | Scoped tool sets; non-agentic "Ask" mode has almost no scaffolding | ~500–1,000 |
-| [Open WebUI](https://openwebui.com/) | Chat-first UI, near-zero fixed prefix; tools/functions only if you add them | ~100–200 |
-
-### CLI alternatives
-
-| Tool | Why it uses less | Avg. system + tool tokens |
-|---|---|---:|
-| [Aider](https://aider.chat/) | No tool-calling schemas — prompt-based edit formats and a compact repo-map instead | ~300–600 |
-| [opencode](https://opencode.ai/) | Lean terminal agent; tool surface is small and configurable | ~500–800 |
-| [llm](https://llm.datasette.io/) (Simon Willison) | Single-shot CLI: system prompt is exactly what you pass (or nothing) | ~0–50 |
-| [gptme](https://gptme.org/) | Small fixed tool set, file-based, runs fully local | ~500–800 |
-
-The direction the ecosystem is moving — and the reason these alternatives win —
-is **progressive disclosure**: instead of preloading every tool definition,
-agents discover tools on demand (filesystem-style tool trees, `search_tools`,
-or code execution), keeping the fixed prefix in the hundreds of tokens instead
-of thousands.
+If the fixed VS Code/Copilot prefix is leaving too little room for code, consider
+changing the harness rather than only trimming VS Code settings. The repository
+root's [harness comparison](../../../harness.md) is a compact reference to
+CLI-first and hybrid options—Pi, Hermes Agent, OpenClaw, Continue, and GitHub
+Copilot—with rough prompt-overhead ranges, BYOK details, and LM Studio
+compatibility. CLI-first tools generally expose a smaller, more configurable
+system prompt, leaving more of a local model's context window for the task.
 
 ## Sources
 
