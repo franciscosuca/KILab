@@ -1,3 +1,13 @@
+## [1.16.0](https://github.com/franciscosuca/KILab/compare/v1.15.0...v1.16.0) (2026-09-21)
+
+### Features
+
+* **add new TODO and TOPICS documentation, and create harness comparison reference:** feat: add new TODO and TOPICS documentation, and create harness comparison reference ([1621c3b](https://github.com/franciscosuca/KILab/commit/1621c3b03d46fd5e2a18d9e6311d0c6189f3e783))
+
+### Bug Fixes
+
+* **align semantic-release repository URL:** fix: align semantic-release repository URL ([27414c1](https://github.com/franciscosuca/KILab/commit/27414c17206e7bbf1f5cbb67fe2bbf6a3f0edf9b))
+
 ## [1.15.0](https://github.com/franciscosuca/prompt-pack/compare/v1.14.0...v1.15.0) (2026-09-18)
 
 ### Features
