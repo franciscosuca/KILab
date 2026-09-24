@@ -7,9 +7,9 @@ KILab is a versioned coding-agent pack for AI-assisted software development, wit
 Clone the source pack and install all Copilot agents and skills into the current repository:
 
 ```bash
-git clone https://github.com/franciscosuca/KILab.git "$HOME/coding-agent-pack-source"
+git clone https://github.com/franciscosuca/KILab.git "$HOME/kilab"
 
-"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+"$HOME/kilab/coding-agent-pack/scripts/install-pack.sh" \
   --target "$PWD" \
   --harness copilot \
   --agents all \
@@ -19,7 +19,7 @@ git clone https://github.com/franciscosuca/KILab.git "$HOME/coding-agent-pack-so
 Install only selected resources with comma-separated names:
 
 ```bash
-"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+"$HOME/kilab/coding-agent-pack/scripts/install-pack.sh" \
   --target "$PWD" \
   --harness copilot \
   --agents test-oracle,blind-implementer \
