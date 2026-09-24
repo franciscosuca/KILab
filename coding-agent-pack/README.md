@@ -108,9 +108,9 @@ The script never installs anything from `catalog/archived/`, never modifies `.gi
 Until the pack is published as a separate repository, clone the KILab source and use the nested pack directory:
 
 ```bash
-git clone https://github.com/franciscosuca/KILab.git "$HOME/coding-agent-pack-source"
+git clone https://github.com/franciscosuca/KILab.git "$HOME/kilab"
 
-"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+"$HOME/kilab/coding-agent-pack/scripts/install-pack.sh" \
   --target "$PWD" \
   --harness copilot \
   --agents all \
@@ -120,14 +120,16 @@ git clone https://github.com/franciscosuca/KILab.git "$HOME/coding-agent-pack-so
 Update the source pack and regenerate the target files:
 
 ```bash
-git -C "$HOME/coding-agent-pack-source" pull --ff-only
+git -C "$HOME/kilab" pull --ff-only
 
-"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+"$HOME/kilab/coding-agent-pack/scripts/install-pack.sh" \
   --target "$PWD" \
   --harness copilot \
   --agents all \
   --skills all
 ```
+
+`git -C "$HOME/kilab"` runs the pull from the source clone without changing your current directory. That keeps `$PWD` pointing at the target project for `--target`. `--ff-only` prevents Git from creating a merge commit if the source clone has diverged.
 
 Review the resulting diff before committing the generated `.github` files.
 
