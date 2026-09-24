@@ -27,6 +27,7 @@ env:
   SR_GITHUB_VERSION: '11.0.6'
   SR_NPM_VERSION: '12.0.2'
   SR_RELEASE_NOTES_VERSION: '14.1.0'
+  SR_REPLACE_VERSION: '1.2.7'
   CC_CONVENTIONALCOMMITS_VERSION: '8.0.0'
 
 jobs:
@@ -69,5 +70,6 @@ jobs:
             --package @semantic-release/github@${SR_GITHUB_VERSION} \
             --package @semantic-release/npm@${SR_NPM_VERSION} \
             --package @semantic-release/release-notes-generator@${SR_RELEASE_NOTES_VERSION} \
+            --package semantic-release-replace-plugin@${SR_REPLACE_VERSION} \
             --package conventional-changelog-conventionalcommits@${CC_CONVENTIONALCOMMITS_VERSION} \
             semantic-release

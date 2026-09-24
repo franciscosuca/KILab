@@ -1,0 +1,56 @@
+# Versioned Coding Agent Pack
+
+KILab keeps reusable agent and skill source under `coding-agent-pack/`. Consumer repositories materialize selected files into the native harness directories; they do not read the pack directory directly.
+
+## Use KILab as a submodule
+
+From the target repository:
+
+```bash
+git submodule add https://github.com/franciscosuca/KILab.git .kilab-pack
+git -C .kilab-pack checkout v1.16.0
+git add .gitmodules .kilab-pack
+```
+
+Install selected Copilot resources:
+
+```bash
+.kilab-pack/coding-agent-pack/scripts/install-pack.sh \
+  --target . \
+  --harness copilot \
+  --agents all \
+  --skills all
+```
+
+The installer writes only the native Copilot projection:
+
+```text
+.github/copilot-instructions.md
+.github/agents/
+.github/skills/
+```
+
+It does not modify `.github/workflows/` or `.github/ISSUE_TEMPLATE/`.
+
+## Update the pinned pack
+
+```bash
+git -C .kilab-pack fetch --tags
+git -C .kilab-pack checkout v1.17.0
+.kilab-pack/coding-agent-pack/scripts/install-pack.sh \
+  --target . --harness copilot --agents all --skills all
+
+git diff
+```
+
+Commit the updated submodule pointer and generated harness files only after reviewing the diff.
+
+## Clone without a submodule
+
+```bash
+git clone https://github.com/franciscosuca/KILab.git "$HOME/coding-agent-pack-source"
+"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+  --target . --harness copilot --agents all --skills all
+```
+
+The pack can also install Claude Code and Pi resources. See [`coding-agent-pack/README.md`](../coding-agent-pack/README.md) for scopes, selectors, Pi conversion, and validation.

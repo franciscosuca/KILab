@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "browser-auto": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp",
+        "--autoConnect"
+      ]
+    }
+  }
+}
