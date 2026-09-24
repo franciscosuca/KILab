@@ -1,3 +1,9 @@
+## [2.0.1](https://github.com/franciscosuca/KILab/compare/v2.0.0...v2.0.1) (2026-09-24)
+
+### Bug Fixes
+
+* **sync manifest version of coding-agent-pack with version of the project:** fix(release): sync manifest version of coding-agent-pack with version of the project ([a59d9e0](https://github.com/franciscosuca/KILab/commit/a59d9e0fb4235879f0675229f7616ac81e0f13b8))
+
 ## [2.0.0](https://github.com/franciscosuca/KILab/compare/v1.16.0...v2.0.0) (2026-09-24)
 
 ### ⚠ BREAKING CHANGES

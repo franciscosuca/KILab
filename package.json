@@ -1,6 +1,6 @@
 {
   "name": "prompt-pack",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Utilities for managing prompt packs",
   "private": false,
   "scripts": {
