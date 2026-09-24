@@ -318,9 +318,11 @@ render_claude_agent() {
 
 render_pi_skill() {
   local source=$1 destination=$2 name description
-  name=$(frontmatter_value "$source" name || true)
+  name=$(basename "$(dirname -- "$destination")")
+  name=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-//; s/-$//')
+  [ -n "$name" ] || die "could not derive a valid Pi skill name for $destination"
+  [ "${#name}" -le 64 ] || die "Pi skill name exceeds 64 characters: $name"
   description=$(frontmatter_value "$source" description || true)
-  [ -n "$name" ] || name=$(basename "$(dirname -- "$destination")")
   description=${description//\\/\\\\}
   description=${description//\"/\\\"}
   if [ "$DRY_RUN" -eq 1 ]; then
