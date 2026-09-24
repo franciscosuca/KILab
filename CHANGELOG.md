@@ -1,3 +1,13 @@
+## [2.0.0](https://github.com/franciscosuca/KILab/compare/v1.16.0...v2.0.0) (2026-09-24)
+
+### ⚠ BREAKING CHANGES
+
+* CLI tooling for cloning agents and skills for a specific harness
+
+### Features
+
+* CLI tooling for cloning agents and skills for a specific harness ([4d737b0](https://github.com/franciscosuca/KILab/commit/4d737b08a0b9a09de5cd1deb84eb0c0f10b9d911))
+
 ## [1.16.0](https://github.com/franciscosuca/KILab/compare/v1.15.0...v1.16.0) (2026-09-21)
 
 ### Features
