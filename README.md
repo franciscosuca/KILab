@@ -1,40 +1,42 @@
 # KILab
 
-KILab is a curated prompt pack for AI-assisted software development. It contains reusable instructions, agent definitions, workflow skills, editor integrations, and local-model evaluation material for GitHub Copilot/VS Code, Claude Code, and Pi. Copy the pieces you need into a project and adapt them to its stack.
+KILab is a versioned coding-agent pack for AI-assisted software development, with optional local-model benchmarking material for GitHub Copilot, Claude Code, and Pi.
 
-## What's included
+## Quick start: coding-agent-pack
 
-- **GitHub Copilot and VS Code customization** — `.github/` contains general Copilot guidance, reusable agents, workflow skills, issue templates, and release automation.
-- **Claude Code configuration** — `.claude/` provides Claude-side agents, commands, hooks, and settings for similar development workflows. See the [Claude Code overview](.claude/README.md).
-- **Pi configuration** — `.pi/` contains project-local settings, a local model catalog, and extension configuration. Pi authentication remains local in `~/.pi/agent/auth.json`.
-- **Local AI evaluation** — `localai/` contains LM Studio and Inspect AI setup guides, VS Code context investigations, recorded results, and a repeatable custom model benchmark.
-- **MCP assets** — `.vscode/mcp.json` provides an MCP configuration template, while the [MCP setup guide](docs/MCP-SETUP.md) explains how to connect VS Code extensions and servers.
+Clone the source pack and install all Copilot agents and skills into the current repository:
 
-## Agents and skills
+```bash
+git clone https://github.com/franciscosuca/KILab.git "$HOME/coding-agent-pack-source"
 
-Agents provide reusable roles for orchestration, implementation, testing, framework-specific development, and platform integrations. Skills provide focused workflows for feature planning, test setup, scoped changes, and release validation.
+"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+  --target "$PWD" \
+  --harness copilot \
+  --agents all \
+  --skills all
+```
 
-The [agent overview](.github/agents/README.md) documents the available delegation model. Browse the [agents](.github/agents) and [skills](.github/skills) directories for the current definitions without duplicating their full catalog here.
+Install only selected resources with comma-separated names:
 
-## Quick start
+```bash
+"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+  --target "$PWD" \
+  --harness copilot \
+  --agents test-oracle,blind-implementer \
+  --skills feature-planning
+```
 
-1. Choose the instructions, agents, skills, or editor configuration that fit your project.
-2. Copy them into the corresponding locations in the target repository, such as `.github/`, `.claude/`, `.pi/`, or `.vscode/`.
-3. Review and adapt prompts, paths, framework assumptions, and tool permissions before using them.
+See [`coding-agent-pack/README.md`](coding-agent-pack/README.md) for Claude and Pi installation, project/global scope, updates, and validation.
 
 ## Local model evaluation
 
-The evaluation material is optional and independent of the prompt pack:
+The benchmark material is optional and independent from the coding-agent pack. It uses `uv`, LM Studio, and Docker for repeatable local model evaluations and sandboxed code execution.
 
-- [Inspect AI + LM Studio guide](localai/inspect-benchmark/README.md) — set up local benchmark runs and inspect model behavior.
-- [Benchmark results](localai/inspect-benchmark/results.md) — recorded HumanEval results and throughput notes.
-- [Custom benchmark](localai/custom-benchmark/README.md) — compare coding models with a small, repeatable VS Code/Copilot task.
+### What's included
 
-The Inspect AI workflow uses `uv`, LM Studio, and Docker for sandboxed code execution. Consult the linked guides for their platform-specific requirements.
-
-## Release automation
-
-The repository uses Conventional Commits and semantic-release. The [release workflow](.github/workflows/release.yml) builds tags and updates release metadata on the configured branches.
+- [Inspect AI + LM Studio guide](benchmarks/inspect-benchmark/README.md) — benchmark setup and execution instructions.
+- [Benchmark results](benchmarks/inspect-benchmark/results.md) — recorded HumanEval results and throughput notes.
+- [Custom benchmark](benchmarks/custom-benchmark/README.md) — a small repeatable VS Code/Copilot model comparison.
 
 ## License
 

@@ -1,49 +1,56 @@
+# Versioned Coding Agent Pack
 
-# Git Submodules
+KILab keeps reusable agent and skill source under `coding-agent-pack/`. Consumer repositories materialize selected files into the native harness directories; they do not read the pack directory directly.
 
-> For teams that prefer explicit version pinning over automatic sync.
+## Use KILab as a submodule
 
-## How to use `prompt-pack` as a Git Submodule
-
-### Add the submodule to a target repo
-
-```bash
-# From the root of the target repo
-git submodule add https://github.com/franciscosuca/prompt-pack .prompt-pack
-git commit -m "chore: add prompt-pack as submodule"
-```
-
-This creates a `.prompt-pack/` directory with a pinned commit reference.
-
-### Copy (or symlink) the files you need
-
-Because GitHub Copilot reads `.github/copilot-instructions.md` directly, you still need to place files in the right location. After adding the submodule, copy what you need:
+From the target repository:
 
 ```bash
-cp .prompt-pack/.github/copilot-instructions.md .github/copilot-instructions.md
-cp .prompt-pack/.github/agents/react.agent.md   .github/agents/react.agent.md
+git submodule add https://github.com/franciscosuca/KILab.git .kilab-pack
+git -C .kilab-pack checkout v1.16.0
+git add .gitmodules .kilab-pack
 ```
 
-Or use a symlink (works locally, but GitHub Actions won't follow it):
+Install selected Copilot resources:
 
 ```bash
-ln -s ../.prompt-pack/.github/copilot-instructions.md .github/copilot-instructions.md
+.kilab-pack/coding-agent-pack/scripts/install-pack.sh \
+  --target . \
+  --harness copilot \
+  --agents all \
+  --skills all
 ```
 
-### Pull upstream changes
+The installer writes only the native Copilot projection:
 
-When `prompt-pack` is updated and you want to adopt the new version:
+```text
+.github/copilot-instructions.md
+.github/agents/
+.github/skills/
+```
+
+It does not modify `.github/workflows/` or `.github/ISSUE_TEMPLATE/`.
+
+## Update the pinned pack
 
 ```bash
-git submodule update --remote .prompt-pack
-git add .prompt-pack
-git commit -m "chore: update prompt-pack to latest"
+git -C .kilab-pack fetch --tags
+git -C .kilab-pack checkout v1.17.0
+.kilab-pack/coding-agent-pack/scripts/install-pack.sh \
+  --target . --harness copilot --agents all --skills all
+
+git diff
 ```
 
-### Clone a repo that already has the submodule
+Commit the updated submodule pointer and generated harness files only after reviewing the diff.
+
+## Clone without a submodule
 
 ```bash
-git clone --recurse-submodules https://github.com/yourorg/yourrepo
-# or, after a plain clone:
-git submodule update --init
+git clone https://github.com/franciscosuca/KILab.git "$HOME/coding-agent-pack-source"
+"$HOME/coding-agent-pack-source/coding-agent-pack/scripts/install-pack.sh" \
+  --target . --harness copilot --agents all --skills all
 ```
+
+The pack can also install Claude Code and Pi resources. See [`coding-agent-pack/README.md`](../coding-agent-pack/README.md) for scopes, selectors, Pi conversion, and validation.

@@ -1,0 +1,16 @@
+name: coding-agent-pack
+version: 1.16.0
+source_repository: https://github.com/franciscosuca/KILab.git
+
+harnesses:
+  - copilot
+  - claude
+  - pi
+
+catalog:
+  core_agents: catalog/core/agents
+  core_skills: catalog/core/skills
+  archived: catalog/archived
+  copilot_adapter: catalog/adapters/copilot
+  claude_adapter: catalog/adapters/claude
+  pi_adapter: catalog/adapters/pi

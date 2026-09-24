@@ -55,7 +55,13 @@ Acceptance checklist:
 
 ## Example in this repo
 
-- Agent file: `.github/agents/test-oracle.agent.md`
-- Agent file: `.github/agents/blind-implementer.agent.md`
+- Source agent: `coding-agent-pack/catalog/core/agents/test-oracle.md`
+- Source agent: `coding-agent-pack/catalog/core/agents/blind-implementer.md`
 
-Copy these files into your target project's `.github/agents/` folder and adapt language/framework details as needed.
+Install them into a target project's Copilot directory with:
+
+```bash
+coding-agent-pack/scripts/install-pack.sh --target . --harness copilot --agents test-oracle,blind-implementer --skills none
+```
+
+Review the generated files in `.github/agents/` and adapt language/framework details as needed.
