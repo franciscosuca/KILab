@@ -1,3 +1,9 @@
+## [2.0.2](https://github.com/franciscosuca/KILab/compare/v2.0.1...v2.0.2) (2026-09-24)
+
+### Bug Fixes
+
+* **name use for the pi skills.:** fix: name use for the pi skills. ([30b61ac](https://github.com/franciscosuca/KILab/commit/30b61acfe7debb07b9c94afe23ad2fdc1b3f2bba))
+
 ## [2.0.1](https://github.com/franciscosuca/KILab/compare/v2.0.0...v2.0.1) (2026-09-24)
 
 ### Bug Fixes
