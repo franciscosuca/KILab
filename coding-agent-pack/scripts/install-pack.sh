@@ -410,6 +410,7 @@ install_claude() {
 
 install_pi() {
   local file name runtime child child_name
+  copy_file "$CATALOG/adapters/pi/APPEND_SYSTEM.md" "$DEST/APPEND_SYSTEM.md"
   copy_file "$CATALOG/adapters/pi/extensions/local-models.ts" "$DEST/extensions/local-models.ts"
   if [ "$AGENTS_SPEC" != "none" ]; then
     for file in "$CORE_AGENTS"/*.md; do
