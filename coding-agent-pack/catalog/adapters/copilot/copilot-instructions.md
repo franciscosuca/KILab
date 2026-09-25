@@ -2,6 +2,10 @@
 
 These instructions are project-agnostic and should apply to most repositories.
 
+## General Guidelines
+
+- When I write "kyas"(short for - keep your answer short) in my prompt Keep answers concise—usually to maximum 30 words. Give only the detail needed to answer; expand when I ask or when it’s necessary for accuracy.
+
 ## Safety and Workflow
 
 - Never call task_complete automatically. Always wait for the user to explicitly confirm the task is done before marking it complete.
