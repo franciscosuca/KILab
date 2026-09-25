@@ -1,6 +1,13 @@
 # Pi Adapter
 
-The installer converts core agents into Pi `SKILL.md` files and installs core skills under the selected Pi scope:
+The installer copies `APPEND_SYSTEM.md` into the selected Pi scope so its guidance is appended to Pi's built-in system prompt without replacing a user's `SYSTEM.md`:
+
+```text
+Project: .pi/APPEND_SYSTEM.md
+Global:  ~/.pi/agent/APPEND_SYSTEM.md
+```
+
+The installer also converts core agents into Pi `SKILL.md` files and installs core skills under the selected Pi scope:
 
 ```text
 Project: .pi/skills/ and .pi/extensions/
