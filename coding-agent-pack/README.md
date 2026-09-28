@@ -63,6 +63,19 @@ Pi does not consume Copilot `.agent.md` files directly. During installation, cor
 
 The installer does not copy Pi authentication, model catalogs, or settings. Existing user and project settings remain untouched.
 
+#### Sync local provider model IDs (optional)
+
+The pack includes `scripts/sync-pi-models.py` to refresh the `models` arrays in Pi's global `~/.pi/agent/models.json` from the configured LM Studio and oMLX endpoints. It is an opt-in maintenance helper; the installer never runs it automatically and it does not change provider URLs or API keys. It uses Python 3 and the standard library.
+
+Preview the discovered models, then apply the update:
+
+```bash
+./scripts/sync-pi-models.py --dry-run
+./scripts/sync-pi-models.py
+```
+
+Run those commands from `coding-agent-pack/`. LM Studio's API must be available (or its `lms` CLI must be installed for the local-catalog fallback); oMLX must be reachable. If oMLX cannot be queried, the script leaves the config unchanged. Pass `--config /path/to/models.json` to target a different Pi config.
+
 ## Installation
 
 Run the script from this directory or through a cloned KILab source checkout:
@@ -141,4 +154,4 @@ Run the pack checks from the KILab repository:
 ./coding-agent-pack/scripts/validate-pack.sh
 ```
 
-Validation checks the catalog layout, frontmatter, executable installer, and that known project-specific paths remain outside `catalog/core/`.
+Validation checks the catalog layout, frontmatter, executable scripts, Python helper syntax, and that known project-specific paths remain outside `catalog/core/`.

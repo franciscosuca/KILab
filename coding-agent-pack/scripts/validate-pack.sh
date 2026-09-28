@@ -23,6 +23,8 @@ check test -d "$CATALOG/adapters/pi"
 check test -d "$CATALOG/archived"
 check test -x "$SCRIPT_DIR/install-pack.sh"
 check bash -n "$SCRIPT_DIR/install-pack.sh"
+check test -x "$SCRIPT_DIR/sync-pi-models.py"
+check python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$SCRIPT_DIR/sync-pi-models.py"
 
 while IFS= read -r -d '' file; do
   check grep -q '^---[[:space:]]*$' "$file"
