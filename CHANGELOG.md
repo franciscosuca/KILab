@@ -1,3 +1,9 @@
+## [2.1.0](https://github.com/franciscosuca/KILab/compare/v2.0.2...v2.1.0) (2026-09-28)
+
+### Features
+
+* **add local models syncing for pi.:** feat: add local models syncing for pi. ([7725442](https://github.com/franciscosuca/KILab/commit/77254425c232311ad75c555fb6191e9bb58c8887))
+
 ## [2.0.2](https://github.com/franciscosuca/KILab/compare/v2.0.1...v2.0.2) (2026-09-24)
 
 ### Bug Fixes
