@@ -7,11 +7,11 @@ user-invocable: true
 
 # Synchronize Plans
 
-Read the sibling `plan-spec/SKILL.md` first. Synchronization compares recorded intent with what actually landed. A merged PR alone is not always done.
+Read the sibling `plan-spec/SKILL.md` first. Before selecting or inspecting plans, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute root is available, ask the user for it and stop without scanning or changing plans. Synchronization compares recorded intent with what actually landed. A merged PR alone is not always done.
 
 ## Procedure
 
-1. Resolve `PLAN_ROOT` and select the requested canonical plan or every plan bundle in `$PLAN_ROOT/open/`. Do not treat supporting files as separate plans.
+1. Resolve and validate `PLAN_ROOT` before any lifecycle scan. If it is absent or invalid, ask the user for an absolute path and stop. Then select the requested canonical plan or every plan bundle in `$PLAN_ROOT/open/`. Do not treat supporting files as separate plans.
 2. Read the canonical plan's acceptance criteria, verification commands, dependencies, PRs, and promised release or deployment. Read related work packages and workflows as supporting scope.
 3. Check each review's state, latest commit, unresolved comments, required policies/checks, and merge result. Check the linked external work item and release evidence such as a release marker, release-system record, deployed version, or documented smoke test when the plan requires it.
 4. Compare changed files and reported results with every plan phase. Record omitted, added, or changed scope in `Outcome`; do not silently rewrite the original plan to match the PR.
@@ -24,8 +24,13 @@ Read the sibling `plan-spec/SKILL.md` first. Synchronization compares recorded i
 
 ## Commands
 
+Run these only after the `PLAN_ROOT` gate passes.
+
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
 find "$PLAN_ROOT/open" -mindepth 2 -maxdepth 2 -type f -name '*.md' -print | sort
 git -C <repo> log --oneline --decorate <base>..<branch>
 git -C <repo> diff --stat <base>...<branch>

@@ -19,9 +19,17 @@ Read this file before using any other `plan-*` skill in this feature-planning co
 - If documentation or a diagram mirrors an external source, compare both directions before calling it current. Do not replace editable diagrams with screenshots unless requested.
 - Separate waits on a person, a decision, and a system. Name the owner or service instead of writing only `blocked`.
 
+## PLAN_ROOT Resolution And Fail-Closed Gate
+
+Before any planning-lifecycle operation, resolve `PLAN_ROOT` from an absolute path supplied in the current request or conversation, an explicit repository/workspace configuration, or a non-empty `PLAN_ROOT` value visible to the current agent. A path remembered only from another conversation or unavailable machine environment does not count. Do not embed a user-specific absolute path in a skill or plan.
+
+The value must be non-empty and absolute. Never infer it from the current directory, choose a repository-local default, search for a likely vault, or fall back to another folder. If no valid value is available, stop before searching, reading, or changing plan data and ask the user: `What absolute path should I use for PLAN_ROOT?` Wait for the answer; do not proceed with any lifecycle stage until it is supplied. If the supplied/configured path is inaccessible or invalid, stop and ask for a correction rather than trying another location.
+
+`/plan-init` may create the specified root and lifecycle folders only after this gate passes. Every other lifecycle skill requires the specified root to exist; if it does not, stop and direct the user to `/plan-init` rather than creating anything implicitly. If expected lifecycle folders are missing, report that and do not initialize them implicitly. Recheck this gate independently at every lifecycle stage and in every new conversation.
+
 ## Layout And State
 
-Resolve `PLAN_ROOT` from repository or workspace configuration, or from the environment. Do not embed a user-specific absolute path in a skill or plan. The plan root contains lifecycle folders:
+Once the gate passes, the plan root contains lifecycle folders:
 
 ```text
 <plan-root>/
@@ -125,10 +133,13 @@ Execution-only sections such as `Dependencies`, `Dispatch Log`, and `Outcome` ma
 
 ## Evidence Sources And Commands
 
-Use only sources available in the current session. State what could not be reached.
+Run these commands only after the `PLAN_ROOT` gate above passes. If the value is absent or invalid, ask the user and stop; do not use a shell error as a substitute for that prompt. Use only sources available in the current session. State what could not be reached.
 
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
 find "$PLAN_ROOT" -maxdepth 3 -type f -name '*.md' -print | sort
 git -C <repo> status --short --branch
 git -C <repo> log --all -n 20 --date=short --format='%ad %h %s'

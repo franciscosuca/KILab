@@ -7,7 +7,7 @@ user-invocable: true
 
 # Report Plan Status
 
-Read the sibling `plan-spec/SKILL.md` first. This skill is read-only: do not move plans, edit the index, transition tickets, approve PRs, or queue pipelines.
+Read the sibling `plan-spec/SKILL.md` first. Before inventorying or reading lifecycle data, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute root is available, ask the user for it and stop; do not scan a guessed location. This skill is read-only: do not move plans, edit the index, transition tickets, approve PRs, or queue pipelines.
 
 ## Procedure
 
@@ -25,8 +25,13 @@ Read the sibling `plan-spec/SKILL.md` first. This skill is read-only: do not mov
 
 ## Commands
 
+Run these only after the `PLAN_ROOT` gate passes.
+
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
 find "$PLAN_ROOT" -mindepth 2 -maxdepth 3 -type f -name '*.md' -print | sort
 grep -RniE '^(status:|updated:|blocked_by:|pull_requests:|depends_on:)' "$PLAN_ROOT" 2>/dev/null
 git -C <repo> status --short --branch

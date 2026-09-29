@@ -7,11 +7,11 @@ user-invocable: true
 
 # Initialize Plans
 
-Read the sibling `plan-spec/SKILL.md` first. Run this once for the repository or workspace. Resolve `PLAN_ROOT` from repository documentation or configuration, or require it from the environment when no convention exists. This creates bookkeeping only; it does not change product code, initialize Git, or commit anything.
+Read the sibling `plan-spec/SKILL.md` first. Before inspecting or creating anything, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute path is available from the current request, explicit repository/workspace configuration, or the current agent environment, ask the user for `PLAN_ROOT` and stop. Do not guess or create a candidate root. Once supplied, this skill may initialize that exact root. This creates bookkeeping only; it does not change product code, initialize Git, or commit anything.
 
 ## Procedure
 
-1. Confirm the installed feature-planning skill contains the sibling `plan-spec/SKILL.md` and resolve `PLAN_ROOT`.
+1. Confirm the installed feature-planning skill contains the sibling `plan-spec/SKILL.md`; resolve and validate `PLAN_ROOT` before any lifecycle-folder inventory or filesystem mutation. If it is missing, ask the user for an absolute path and stop.
 2. Inventory existing plan bundles and lifecycle folders. Treat standalone Markdown directly under a lifecycle folder as legacy and do not move it automatically. A canonical file nested one level below a lifecycle folder is the plan owner; supporting files are not separate plans.
 3. Create the five missing lifecycle folders.
 4. Create `PLAN_ROOT/README.md` only if absent. If it exists, preserve its content and add only missing lifecycle sections.
@@ -36,10 +36,13 @@ Each entry is one checkbox line with plan link, title, external identifier when 
 
 ## Commands
 
-Run these preflight and verification commands after setting the plan root. Use workspace file tools to create the folders and README.
+Run these commands only after the `PLAN_ROOT` gate passes. Use workspace file tools to create the folders and README.
 
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be supplied as an absolute path; ask the user and stop.\n' >&2
+  exit 2
+fi
 test -n "$(find . -type f -path '*/plan-spec/SKILL.md' -print -quit)"
 find "$PLAN_ROOT" -maxdepth 4 -type f -name '*.md' -print 2>/dev/null | sort
 mkdir -p "$PLAN_ROOT"/{drafts,next,open,done,discarded}

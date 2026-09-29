@@ -7,7 +7,7 @@ user-invocable: true
 
 # Retrospect On Plans
 
-Read the sibling `plan-spec/SKILL.md` first. The retro improves the workflow from observed repetition. It proposes skill edits; it does not apply or commit them until the Prompter approves.
+Read the sibling `plan-spec/SKILL.md` first. Before searching completed plans, history, or review evidence, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute root is available, ask the user for it and stop without scanning a guessed location. The retro improves the workflow from observed repetition. It proposes skill edits; it does not apply or commit them until the Prompter approves.
 
 ## Procedure
 
@@ -21,8 +21,13 @@ Read the sibling `plan-spec/SKILL.md` first. The retro improves the workflow fro
 
 ## Commands
 
+Run these only after the `PLAN_ROOT` gate passes.
+
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
 find "$PLAN_ROOT"/{done,discarded} -mindepth 2 -maxdepth 4 -type f -name '*.md' -mtime -90 -print | sort
 git -C <repo> log --all --since='90 days ago' --date=short --format='%ad %h %s%n%b'
 git -C <repo> log --all --since='90 days ago' --grep='fix\|revert\|follow-up\|pipeline\|deploy' -i --oneline

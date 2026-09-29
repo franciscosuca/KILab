@@ -7,7 +7,7 @@ user-invocable: true
 
 # Write An Implementation Plan
 
-Read the sibling `plan-spec/SKILL.md` first. Also read any repository-local planning guidance named by the project. This skill investigates and writes the plan; it does not implement it.
+Read the sibling `plan-spec/SKILL.md` first. Before inspecting drafts, request context, or source code for this lifecycle task, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute root is available, ask the user for it and stop; never guess a folder or continue under another root. Also read any repository-local planning guidance named by the project. This skill investigates and writes the plan; it does not implement it.
 
 ## Procedure
 
@@ -26,10 +26,13 @@ Before moving a draft, verify that the bundle and canonical file both follow `pl
 
 ## Commands
 
-Use the narrowest relevant forms:
+Run these only after the `PLAN_ROOT` gate passes. Use the narrowest relevant forms:
 
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
 find "$PLAN_ROOT/drafts" -mindepth 2 -maxdepth 2 -type f -name '*.md' -print | sort
 grep -RniE '<symbol|route|setting|ticket>' <repo-path>
 git -C <repo> status --short --branch
