@@ -1,3 +1,9 @@
+## [2.2.0](https://github.com/franciscosuca/KILab/compare/v2.1.0...v2.2.0) (2026-09-29)
+
+### Features
+
+* **update skills to force the declaration of PLAN_ROOT, in order to establish where the plan are going to get stored.:** feat: update skills to force the declaration of PLAN_ROOT, in order to establish where the plan are going to get stored. ([163015d](https://github.com/franciscosuca/KILab/commit/163015d8c2659984af9d56e56374b9b2e795344f))
+
 ## [2.1.0](https://github.com/franciscosuca/KILab/compare/v2.0.2...v2.1.0) (2026-09-28)
 
 ### Features
