@@ -7,7 +7,7 @@ user-invocable: true
 
 # Add A Draft Plan
 
-Read the sibling `plan-spec/SKILL.md` first and resolve `PLAN_ROOT` from it. Capture the request quickly without pretending the design is settled. Do not implement product code.
+Read the sibling `plan-spec/SKILL.md` first and pass its `PLAN_ROOT` fail-closed gate before searching or reading lifecycle data. If no valid absolute root is available, ask the user for it and stop; do not infer a folder or proceed with `/plan-add`. Capture the request quickly without pretending the design is settled. Do not implement product code.
 
 ## Procedure
 
@@ -24,8 +24,13 @@ Use the Prompter's own task language: problem first, then desired workflow or st
 
 ## Commands
 
+Run these only after the `PLAN_ROOT` gate passes.
+
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
 grep -RniE '<issue-key|distinctive-terms>' "$PLAN_ROOT" 2>/dev/null
 date +%F
 git -C <repo> status --short --branch

@@ -7,11 +7,11 @@ user-invocable: true
 
 # Dispatch A Plan
 
-Read the sibling `plan-spec/SKILL.md` first. `/plan-dispatch` authorizes implementation, commits, push, and a draft review for the selected plan, but never authorizes merging, external work-item transitions, or discarding work.
+Read the sibling `plan-spec/SKILL.md` first. Before selecting a plan or launching implementation, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute root is available, ask the user for it and stop without dispatching or changing any plan. `/plan-dispatch` authorizes implementation, commits, push, and a draft review for the selected plan, but never authorizes merging, external work-item transitions, or discarding work.
 
 ## Preflight
 
-1. Resolve `PLAN_ROOT` and select exactly one canonical plan from `$PLAN_ROOT/next/<plan-slug>/<plan-slug>.md`; when no name is supplied, choose the first unblocked bundle in the index and state the choice.
+1. Resolve and validate `PLAN_ROOT` before any lifecycle scan. If it is absent or invalid, ask the user for an absolute path and stop. Then select exactly one canonical plan from `$PLAN_ROOT/next/<plan-slug>/<plan-slug>.md`; when no name is supplied, choose the first unblocked bundle in the index and state the choice.
 2. Confirm `blocked_by` is empty, dependencies are done or explicitly parallel-safe, affected repositories and branches are named, and verification commands are exact.
 3. Inspect every target worktree. If unrelated changes exist, preserve them. If user changes overlap planned files, stop and ask how to isolate the work.
 4. Confirm access to each required external system. Record an unavailable issue tracker, source host, or CI connection instead of claiming it passed.
@@ -27,8 +27,13 @@ Commits use the repository's required format; when none is documented, use `type
 
 ## Commands
 
+Run these only after the `PLAN_ROOT` gate passes.
+
 ```bash
-PLAN_ROOT="${PLAN_ROOT:?Set PLAN_ROOT to the configured planning root}"
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
 git -C <repo> status --short --branch
 git -C <repo> branch --show-current
 git -C <repo> remote -v

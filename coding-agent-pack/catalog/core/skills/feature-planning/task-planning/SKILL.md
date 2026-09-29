@@ -5,7 +5,7 @@ description: "Use when creating or updating implementation-ready plans across on
 
 # Task Planning
 
-Create implementation-ready plans from the current state of the repository or workspace. Plans belong under the configured `PLAN_ROOT` and are stored as plan bundles: one canonical Markdown file plus optional context, workflow, and work-package documents. Plans must be based on the code, tests, configuration, and relevant history rather than on an issue description alone.
+Read the sibling `plan-spec/SKILL.md` first, then pass its `PLAN_ROOT` fail-closed gate before planning. If no valid absolute root is available from the current request, explicit repository/workspace configuration, or the current agent environment, ask the user for the path and stop; do not investigate or write a plan under a guessed location. Create implementation-ready plans from the current state of the repository or workspace. Plans belong under the configured `PLAN_ROOT` and are stored as plan bundles: one canonical Markdown file plus optional context, workflow, and work-package documents. Plans must be based on the code, tests, configuration, and relevant history rather than on an issue description alone.
 
 This skill produces a plan. Do not implement the planned changes unless the user explicitly asks for implementation.
 
@@ -17,13 +17,14 @@ Read the repository's local instructions before planning. Check for `copilot-ins
 
 ## Planning Workflow
 
-1. **Capture the request.** Preserve the incoming request, examples, constraints, and named references in the plan bundle's `context/request.md` before writing the canonical summary. Then record the requested behavior, affected users or services, explicit non-goals, and constraints.
-2. **Inspect current behavior.** Read the owning implementation, its neighboring tests, relevant schemas or configuration, and the closest documentation. Follow the request or lifecycle through each boundary instead of planning from filenames alone.
-3. **Check history.** Use the latest relevant commits and, when useful, blame or earlier task notes to distinguish work that is already landed from work that is only proposed. Do not treat an old plan as current status.
-4. **Classify each work item.** Mark it as `landed`, `partially landed`, `planned`, or `blocked`. For `landed` items, cite the path and symbol that demonstrate the behavior and note whether tests cover it. Preserve landed work in the plan so the remaining scope is unambiguous.
-5. **Trace cross-project effects.** Check API contracts, authentication and authorization, persistence and migrations, startup or hydration, deployment configuration, frontend consumers, extension manifests, and compatibility with existing routes or resources when relevant.
-6. **Write the canonical plan.** Order phases by dependency. Each phase must identify the behavior, likely files and symbols, tests, and operational or documentation work needed to complete it. Do not create workflow or work-package files during this first pass.
-7. **Validate the canonical document.** Confirm that paths and symbols exist or are clearly labeled as new, Mermaid syntax is coherent, estimates cover discovery through verification, Related documents subsections exist even when empty, and no phase contradicts the current status.
+1. **Pass the `PLAN_ROOT` gate.** Resolve and validate the absolute root before inspecting planning lifecycle data or creating any plan artifacts. If it is missing, ask the user and stop.
+2. **Capture the request.** Preserve the incoming request, examples, constraints, and named references in the plan bundle's `context/request.md` before writing the canonical summary. Then record the requested behavior, affected users or services, explicit non-goals, and constraints.
+3. **Inspect current behavior.** Read the owning implementation, its neighboring tests, relevant schemas or configuration, and the closest documentation. Follow the request or lifecycle through each boundary instead of planning from filenames alone.
+4. **Check history.** Use the latest relevant commits and, when useful, blame or earlier task notes to distinguish work that is already landed from work that is only proposed. Do not treat an old plan as current status.
+5. **Classify each work item.** Mark it as `landed`, `partially landed`, `planned`, or `blocked`. For `landed` items, cite the path and symbol that demonstrate the behavior and note whether tests cover it. Preserve landed work in the plan so the remaining scope is unambiguous.
+6. **Trace cross-project effects.** Check API contracts, authentication and authorization, persistence and migrations, startup or hydration, deployment configuration, frontend consumers, extension manifests, and compatibility with existing routes or resources when relevant.
+7. **Write the canonical plan.** Order phases by dependency. Each phase must identify the behavior, likely files and symbols, tests, and operational or documentation work needed to complete it. Do not create workflow or work-package files during this first pass.
+8. **Validate the canonical document.** Confirm that paths and symbols exist or are clearly labeled as new, Mermaid syntax is coherent, estimates cover discovery through verification, Related documents subsections exist even when empty, and no phase contradicts the current status.
 
 ## Required Plan Format
 

@@ -1,6 +1,14 @@
 # Plan Skills Workflow
 
-The plan skills manage implementation work under the configured `PLAN_ROOT`. The lifecycle folders are:
+The plan skills manage implementation work under `PLAN_ROOT`. The lifecycle folders are:
+
+## Required PLAN_ROOT Gate (Every Stage)
+
+Before any planning-lifecycle stage—including init, add, write, dispatch, status, sync, retro, or creating supporting workflows/work packages—resolve a non-empty absolute `PLAN_ROOT` from the current request/conversation, explicit repository/workspace configuration, or an environment value visible to the agent. Do not rely on a value remembered from another conversation or another machine.
+
+If no valid path is available, stop before searching, reading, or changing plan data and ask: `What absolute path should I use for PLAN_ROOT?` Wait for the user's answer. Never guess a folder, use the repository root as a fallback, or create a candidate location. If a configured path is invalid or inaccessible, ask for a correction rather than falling back. Only `/plan-init` may create the specified root, and only after the gate passes; every other stage requires the specified root to exist. If it or expected lifecycle folders are missing, stop and direct the user to `/plan-init` rather than initializing implicitly.
+
+The canonical policy is in `plan-spec/SKILL.md` and applies even when a stage is invoked through a prompt example below.
 
 - `drafts/`: captured requests and canonical plans that still need investigation or approval.
 - `next/`: approved, implementation-ready plan bundles waiting to be dispatched.
@@ -82,7 +90,7 @@ flowchart LR
 ```text
 /plan-init
 
-Resolve PLAN_ROOT from repository or workspace configuration. Create or verify README.md and the drafts, next, open, done, and discarded folders. Preserve legacy content, do not rename legacy files, do not modify product code, and do not commit. Report every created or existing path.
+First resolve and validate an absolute PLAN_ROOT from the current request, explicit repository/workspace configuration, or an environment value visible to the agent. If none is available, ask the user for the path and stop without inspecting or creating anything. Once the gate passes, create or verify README.md and the drafts, next, open, done, and discarded folders. Preserve legacy content, do not rename legacy files, do not modify product code, and do not commit. Report every created or existing path.
 ```
 
 ### 2. Capture a request as a draft
@@ -167,6 +175,7 @@ Review recently done and discarded canonical plan bundles, work-package correcti
 ## Safety Rules
 
 - The Owner is the default plan owner and final reviewer; the Prompter supplies decisions that evidence cannot resolve.
+- At every lifecycle stage, require a valid absolute `PLAN_ROOT`; if it is missing, ask the user and stop without touching plan data. Never infer a fallback path.
 - Never invent an issue number. Use `XXXX` when it is missing.
 - Never store credentials, tokens, or secret-bearing conversation text in a plan.
 - Do not rename or rewrite legacy plans during initialization.
