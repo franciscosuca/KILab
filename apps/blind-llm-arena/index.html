@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d14">
+  <title>Blind LLM Arena · KILab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; --ink: #edf1f7; --muted: #929daf; --line: rgba(174, 190, 212, .14); --accent: #a8f0d0; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { min-width: 320px; background: #090d14; scroll-behavior: smooth; }
+    body { margin: 0; min-height: 100vh; color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: radial-gradient(ellipse at 50% -22%, rgba(60, 95, 103, .25), transparent 54%), #090d14; }
+    button, textarea { font: inherit; }
+    button:focus-visible, textarea:focus-visible, iframe:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .shell { width: min(1440px, 100%); margin-inline: auto; padding: 30px clamp(18px, 4vw, 64px) 38px; }
+    .eyebrow { color: #a9b4c5; font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .16em; text-transform: uppercase; }
+    .hero-title { font-size: clamp(2.6rem, 6.6vw, 5.2rem); line-height: .98; letter-spacing: -.065em; font-weight: 650; }
+    .prompt-card, .result-card, .config-note { background: rgba(17, 23, 33, .84); border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0, 0, 0, .17); }
+    .prompt-input { resize: vertical; min-height: 75px; color: #f3f4f6; background: transparent; border: 0; outline: 0; }
+    .prompt-input::placeholder { color: #788498; }
+    .action-button { transition: transform .18s ease, background .18s ease, border-color .18s ease, opacity .18s ease; }
+    .action-button:not(:disabled):hover { transform: translateY(-1px); }
+    .action-button:disabled { cursor: not-allowed; opacity: .42; }
+    .run-button { color: #08120f; background: var(--accent); }
+    .run-button:not(:disabled):hover { background: #c0f8df; }
+    .secondary-button { border: 1px solid rgba(185, 199, 218, .22); background: rgba(255, 255, 255, .035); }
+    .secondary-button:not(:disabled):hover { border-color: rgba(185, 199, 218, .48); background: rgba(255, 255, 255, .075); }
+    .mode-switch[aria-checked="true"] .switch-knob { transform: translateX(16px); background: #07130e; }
+    .mode-switch[aria-checked="true"] .switch-track { background: var(--accent); }
+    .result-card { min-width: 0; overflow: hidden; transition: border-color .28s ease, transform .28s ease, box-shadow .28s ease; }
+    .result-card:hover { border-color: rgba(174, 190, 212, .27); }
+    .identity-badge { opacity: 0; filter: blur(7px); transform: translateY(5px); transition: opacity .48s ease, filter .48s ease, transform .48s ease; }
+    .identity-badge.is-revealed { opacity: 1; filter: blur(0); transform: translateY(0); }
+    .provider-mark { display: inline-grid; width: 22px; height: 22px; place-items: center; border: 1px solid rgba(255,255,255,.2); border-radius: 7px; color: #e7e9ef; font-size: 10px; font-weight: 700; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #718096; }
+    .status-thinking .status-dot { background: #f3c969; box-shadow: 0 0 12px rgba(243, 201, 105, .5); animation: blink 1.2s infinite; }
+    .status-ready .status-dot { background: #76ddb0; box-shadow: 0 0 10px rgba(118, 221, 176, .3); }
+    .status-error .status-dot { background: #fb7185; }
+    @keyframes blink { 50% { opacity: .35; } }
+    .skeleton-line { height: 11px; border-radius: 999px; background: linear-gradient(90deg, rgba(160,174,192,.08), rgba(160,174,192,.17), rgba(160,174,192,.08)); background-size: 200% 100%; animation: shimmer 1.45s linear infinite; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    .code-scroll { scrollbar-color: #394455 transparent; scrollbar-width: thin; }
+    .response-code { white-space: pre; tab-size: 2; }
+    .preview-frame { width: 100%; height: 380px; border: 0; background: white; color-scheme: light; }
+    .card-tab[aria-selected="true"] { color: #edf1f7; border-color: var(--accent); }
+    .card-tab { color: #8490a2; border-bottom: 1px solid transparent; }
+    .reveal-banner { opacity: 0; transform: translateY(-3px); transition: opacity .35s ease, transform .35s ease; }
+    .reveal-banner.is-revealed { opacity: 1; transform: translateY(0); }
+    .subtle-grid { background-image: linear-gradient(rgba(255,255,255,.023) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.023) 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, rgba(0,0,0,.55), transparent 90%); pointer-events: none; }
+    @media (max-width: 640px) { .shell { padding-top: 20px; } .preview-frame { height: 320px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="subtle-grid fixed inset-0" aria-hidden="true"></div>
+  <div class="shell relative">
+    <header class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-5">
+      <a href="#top" class="flex items-center gap-3 text-inherit no-underline" aria-label="Blind LLM Arena home">
+        <span class="grid h-9 w-9 place-items-center rounded-xl border border-white/15 bg-white/[.04] font-mono text-sm text-emerald-200">BL</span>
+        <span class="text-sm font-semibold tracking-wide">KILab <span class="font-normal text-slate-500">/ Blind LLM Arena</span></span>
+      </a>
+      <div class="flex items-center gap-2 text-xs text-slate-400">
+        <span id="mode-indicator" class="rounded-full border border-emerald-300/20 bg-emerald-300/[.07] px-3 py-1.5 font-mono text-emerald-200">DEMO MODE</span>
+        <span class="hidden sm:inline">Same prompt · anonymous results</span>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="pb-8 pt-10 sm:pb-10 sm:pt-14">
+        <div class="eyebrow mb-5 flex items-center gap-2"><span class="h-px w-6 bg-emerald-200"></span> Live code challenge · audience vote</div>
+        <div class="flex flex-col justify-between gap-7 xl:flex-row xl:items-end">
+          <div class="max-w-3xl">
+            <h1 class="hero-title">Blind LLM<br><span class="text-emerald-200">Arena</span></h1>
+            <p class="mt-5 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">One challenge. Multiple models. Judge the work before you learn who made it.</p>
+          </div>
+          <p class="max-w-xs border-l border-emerald-200/50 pl-4 text-sm leading-6 text-slate-400">Read the anonymous results, vote for your favorite, then reveal the models.</p>
+        </div>
+      </section>
+
+      <section class="prompt-card rounded-2xl p-4 sm:p-6" aria-labelledby="prompt-heading">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <label id="prompt-heading" for="prompt-input" class="eyebrow">The same prompt goes to every model</label>
+          <span class="shrink-0 font-mono text-[10px] text-slate-500">CHALLENGE 01</span>
+        </div>
+        <textarea id="prompt-input" class="prompt-input w-full text-base leading-7 sm:text-lg" rows="2" spellcheck="false">Write a single-file HTML/Tailwind CSS interactive button for a 'Self-Destruct' mechanism.</textarea>
+      </section>
+
+      <section class="mt-5 flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center" aria-label="Benchmark controls">
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="run-button" type="button" class="action-button run-button inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold shadow-lg shadow-emerald-950/25">
+            <svg id="run-icon" aria-hidden="true" viewBox="0 0 20 20" class="h-4 w-4 fill-current"><path d="M6.25 3.9a1 1 0 0 1 1.52-.85l8.1 5.1a2.2 2.2 0 0 1 0 3.7l-8.1 5.1a1 1 0 0 1-1.52-.85V3.9Z"/></svg>
+            <span id="run-label">Run Benchmark</span>
+          </button>
+          <button id="reveal-button" type="button" class="action-button secondary-button inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold" aria-pressed="false" disabled>
+            <svg aria-hidden="true" viewBox="0 0 20 20" class="h-4 w-4 fill-none stroke-current" stroke-width="1.6"><path d="M2.1 10s2.8-5.1 7.9-5.1 7.9 5.1 7.9 5.1-2.8 5.1-7.9 5.1S2.1 10 2.1 10Z"/><circle cx="10" cy="10" r="2.2"/></svg>
+            <span id="reveal-label">Reveal Identities</span>
+          </button>
+        </div>
+        <div class="flex items-center justify-between gap-4 sm:justify-end">
+          <div>
+            <div class="text-xs font-medium text-slate-300">Mock responses</div>
+            <div id="mode-description" class="mt-0.5 text-[11px] text-slate-500">Safe demo · no API keys needed</div>
+          </div>
+          <button id="mode-toggle" type="button" role="switch" aria-checked="true" aria-label="Use mock responses" class="mode-switch rounded-full p-0.5">
+            <span class="switch-track block h-6 w-11 rounded-full bg-slate-700 p-0.5 transition-colors"><span class="switch-knob block h-5 w-5 rounded-full bg-white shadow transition-transform"></span></span>
+          </button>
+        </div>
+      </section>
+
+      <div class="mt-7 flex flex-wrap items-end justify-between gap-3 border-b border-white/10 pb-3">
+        <div>
+          <div class="eyebrow">Anonymous outputs</div>
+          <p class="mt-1 text-sm text-slate-400">Which one would you ship? Decide before the reveal.</p>
+        </div>
+        <div id="run-summary" class="font-mono text-xs text-slate-500" role="status" aria-live="polite">Ready when you are</div>
+      </div>
+
+      <section id="result-grid" class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3" aria-label="Anonymous model responses"></section>
+
+      <div id="reveal-banner" class="reveal-banner mt-5 rounded-xl border border-emerald-200/20 bg-emerald-200/[.055] px-4 py-3 text-sm text-emerald-100" role="status" aria-live="polite">Identities revealed. Compare the results with your vote.</div>
+
+      <details class="config-note mt-7 rounded-xl px-4 py-3 text-sm text-slate-400">
+        <summary class="cursor-pointer select-none font-medium text-slate-300">Run with live models · configuration &amp; safety</summary>
+        <div class="mt-3 max-w-4xl space-y-2 leading-6">
+          <p>Open <code class="rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-emerald-100">index.html</code> and edit <code class="rounded bg-white/5 px-1.5 py-0.5 font-mono text-xs text-emerald-100">CONFIG.models</code> in the script. Set each model's name, provider, protocol, base URL, model ID, and API key; then turn Mock responses off. The app supports OpenAI-compatible APIs (including LM Studio and compatible cloud proxies) and Ollama's chat API.</p>
+          <p>Live requests run from your browser, so the endpoint must allow CORS. API keys in this file are visible to anyone who can access it: use local-only credentials or a private proxy, never publish a key in a public copy. Mock mode is enabled by default.</p>
+          <p>HTML previews run in a sandboxed iframe, separate from this page. Response text is rendered as text, not injected as HTML.</p>
+        </div>
+      </details>
+    </main>
+    <footer class="mt-8 flex flex-wrap justify-between gap-2 border-t border-white/10 pt-4 text-[11px] text-slate-600">
+      <span>Blind LLM Arena · KILab presentation tool</span>
+      <span>Vote first. Reveal second.</span>
+    </footer>
+  </div>
+
+  <script>
+    // Configure models here. Leave mockMode=true for a key-free presentation demo.
+    // For live mode, use "openai-compatible" for OpenAI, LM Studio, and compatible proxies;
+    // use "ollama" for Ollama. Never publish real API keys in a client-side app.
+    const CONFIG = {
+      mockMode: true,
+      requestTimeoutMs: 120000,
+      models: [
+        {
+          id: "openai-gpt-4o", name: "GPT-4o", provider: "OpenAI", mark: "O",
+          protocol: "openai-compatible", baseUrl: "https://api.openai.com/v1", model: "gpt-4o",
+          apiKey: "", requiresApiKey: true, mockDelayMs: 1250,
+          mockResponse: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"><\/script>
+</head>
+<body class="min-h-screen grid place-items-center bg-slate-950 p-8 text-white">
+  <main class="text-center">
+    <button id="arm" class="rounded-xl bg-rose-600 px-7 py-4 font-bold shadow-lg shadow-rose-950/40 hover:bg-rose-500">ARM SELF-DESTRUCT</button>
+    <p id="status" class="mt-4 text-sm text-slate-400">Two-step confirmation enabled</p>
+  </main>
+  <script>
+    const button = document.querySelector('#arm');
+    let armed = false;
+    button.addEventListener('click', () => {
+      if (!armed) {
+        armed = true;
+        button.textContent = 'CONFIRM DESTRUCTION';
+        button.classList.replace('bg-rose-600', 'bg-amber-500');
+        document.querySelector('#status').textContent = 'Click again within 5 seconds to confirm';
+        setTimeout(() => { armed = false; button.textContent = 'ARM SELF-DESTRUCT'; button.classList.replace('bg-amber-500', 'bg-rose-600'); }, 5000);
+      } else {
+        button.disabled = true;
+        button.textContent = 'SEQUENCE CANCELLED';
+        document.querySelector('#status').textContent = 'Demo only — no system was harmed.';
+      }
+    });
+  <\/script>
+</body>
+</html>`
+        },
+        {
+          id: "claude-proxy", name: "Claude 3.5 Sonnet", provider: "Cloud API proxy", mark: "C",
+          protocol: "openai-compatible", baseUrl: "https://your-openai-compatible-proxy.example/v1", model: "claude-3-5-sonnet",
+          apiKey: "", requiresApiKey: true, mockDelayMs: 1850,
+          mockResponse: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"><\/script>
+</head>
+<body class="min-h-screen grid place-items-center bg-zinc-950 p-8 text-zinc-100">
+  <main class="w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-7 text-center">
+    <div class="text-xs font-semibold uppercase tracking-[.2em] text-zinc-500">Protocol</div>
+    <div id="count" class="my-5 font-mono text-5xl text-rose-300">05:00</div>
+    <button id="trigger" class="w-full rounded-lg border border-rose-400/50 px-4 py-3 font-semibold text-rose-200 hover:bg-rose-400/10">Initiate sequence</button>
+    <p id="message" class="mt-4 min-h-5 text-sm text-zinc-400">Awaiting deliberate confirmation</p>
+  </main>
+  <script>
+    let seconds = 300;
+    let timer;
+    document.querySelector('#trigger').addEventListener('click', (event) => {
+      const button = event.currentTarget;
+      if (timer) { clearInterval(timer); timer = null; seconds = 300; button.textContent = 'Initiate sequence'; document.querySelector('#message').textContent = 'Sequence aborted.'; return; }
+      button.textContent = 'Abort countdown';
+      document.querySelector('#message').textContent = 'Demo countdown started — abort is always available.';
+      timer = setInterval(() => {
+        seconds--;
+        document.querySelector('#count').textContent = String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0');
+        if (seconds <= 0) { clearInterval(timer); timer = null; button.textContent = 'Sequence complete'; button.disabled = true; }
+      }, 1000);
+    });
+  <\/script>
+</body>
+</html>`
+        },
+        {
+          id: "ollama-qwen", name: "Qwen 2.5 72B", provider: "Ollama", mark: "Q",
+          protocol: "ollama", baseUrl: "http://localhost:11434", model: "qwen2.5:72b",
+          apiKey: "", requiresApiKey: false, mockDelayMs: 1550,
+          mockResponse: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"><\/script>
+</head>
+<body class="min-h-screen grid place-items-center bg-neutral-950 p-8 text-neutral-100">
+  <main class="w-full max-w-xs text-center">
+    <div class="mb-3 text-xs uppercase tracking-[.24em] text-neutral-500">Safety interlock</div>
+    <button id="press" class="group relative w-40 rounded-full border border-red-300/30 bg-red-600 px-5 py-5 font-black tracking-wide shadow-[0_0_38px_-12px_rgba(239,68,68,.8)] transition active:scale-95 hover:bg-red-500">HOLD TO ARM</button>
+    <p id="hint" class="mt-5 text-sm text-neutral-400">Press and hold for 2 seconds</p>
+  </main>
+  <script>
+    const control = document.querySelector('#press');
+    let hold;
+    const reset = () => { clearTimeout(hold); control.textContent = 'HOLD TO ARM'; document.querySelector('#hint').textContent = 'Press and hold for 2 seconds'; };
+    control.addEventListener('pointerdown', () => { control.textContent = 'KEEP HOLDING…'; hold = setTimeout(() => { control.textContent = 'ARMED — DEMO'; document.querySelector('#hint').textContent = 'Simulation only. No destructive action is connected.'; }, 2000); });
+    control.addEventListener('pointerup', reset);
+    control.addEventListener('pointerleave', reset);
+    control.addEventListener('pointercancel', reset);
+    control.addEventListener('keydown', (event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); control.textContent = 'ARMED — DEMO'; document.querySelector('#hint').textContent = 'Simulation only. No destructive action is connected.'; } });
+  <\/script>
+</body>
+</html>`
+        }
+      ]
+    };
+
+    const state = {
+      mockMode: CONFIG.mockMode,
+      running: false,
+      hasRun: false,
+      revealed: false,
+      assignments: [],
+      previousSignature: "",
+      cards: new Map()
+    };
+
+    const elements = {
+      prompt: document.querySelector("#prompt-input"),
+      grid: document.querySelector("#result-grid"),
+      run: document.querySelector("#run-button"),
+      runLabel: document.querySelector("#run-label"),
+      reveal: document.querySelector("#reveal-button"),
+      revealLabel: document.querySelector("#reveal-label"),
+      mode: document.querySelector("#mode-toggle"),
+      modeIndicator: document.querySelector("#mode-indicator"),
+      modeDescription: document.querySelector("#mode-description"),
+      summary: document.querySelector("#run-summary"),
+      revealBanner: document.querySelector("#reveal-banner")
+    };
+
+    function makeCard(letter) {
+      const article = document.createElement("article");
+      article.className = "result-card rounded-2xl";
+      article.innerHTML = `
+        <div class="flex items-center justify-between gap-3 border-b border-white/[.08] px-4 py-4 sm:px-5">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[.045] font-mono text-sm font-semibold text-slate-200 card-letter"></span>
+            <div class="min-w-0">
+              <h2 class="truncate text-sm font-semibold text-slate-100 card-title"></h2>
+              <div class="identity-badge mt-1 flex items-center gap-1.5 text-[11px] text-emerald-100" hidden>
+                <span class="provider-mark"></span><span class="provider-name truncate"></span><span aria-hidden="true">·</span><span class="model-name truncate font-medium"></span>
+              </div>
+            </div>
+          </div>
+          <div class="flex shrink-0 flex-col items-end gap-1.5">
+            <span class="status-pill status-ready inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-1 text-[10px] text-slate-300"><span class="status-dot"></span><span class="status-label">Ready</span></span>
+            <span class="latency font-mono text-[10px] text-slate-500">—</span>
+          </div>
+        </div>
+        <div class="flex items-center justify-between border-b border-white/[.06] px-4 sm:px-5">
+          <div class="flex items-center gap-4">
+            <button type="button" class="card-tab py-2.5 text-xs" data-view="response" aria-selected="true">Response</button>
+            <button type="button" class="card-tab py-2.5 text-xs" data-view="preview" aria-selected="false" hidden>Preview</button>
+          </div>
+          <button type="button" class="copy-button rounded-md px-2 py-1 text-[11px] text-slate-500 transition hover:bg-white/5 hover:text-slate-200" hidden>Copy</button>
+        </div>
+        <div class="code-scroll min-h-[280px] max-h-[500px] overflow-auto p-4 sm:p-5">
+          <div class="empty-state flex min-h-[240px] items-center justify-center rounded-xl border border-dashed border-white/[.09] text-center text-xs leading-5 text-slate-600"><span>Run the benchmark<br>to see this response</span></div>
+          <div class="skeleton space-y-4 py-2" hidden aria-label="Waiting for model response">
+            <div class="skeleton-line w-4/5"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-11/12"></div>
+            <div class="skeleton-line mt-7 w-3/5"></div><div class="skeleton-line w-full"></div><div class="skeleton-line w-4/5"></div>
+            <div class="skeleton-line mt-7 w-2/3"></div><div class="skeleton-line w-5/6"></div>
+          </div>
+          <pre class="response-view m-0 text-[12px] leading-6 text-slate-300" hidden><code class="response-code"></code></pre>
+          <div class="error-view whitespace-pre-wrap rounded-xl border border-rose-300/15 bg-rose-300/[.045] p-4 text-xs leading-6 text-rose-200" hidden></div>
+          <iframe class="preview-view preview-frame rounded-lg" title="Sandboxed HTML output preview" sandbox="allow-scripts" hidden></iframe>
+        </div>`;
+      article.querySelector(".card-letter").textContent = letter;
+      article.querySelector(".card-title").textContent = `Model ${letter}`;
+      const card = {
+        article,
+        status: article.querySelector(".status-pill"),
+        statusLabel: article.querySelector(".status-label"),
+        latency: article.querySelector(".latency"),
+        identity: article.querySelector(".identity-badge"),
+        providerMark: article.querySelector(".provider-mark"),
+        providerName: article.querySelector(".provider-name"),
+        modelName: article.querySelector(".model-name"),
+        empty: article.querySelector(".empty-state"),
+        skeleton: article.querySelector(".skeleton"),
+        response: article.querySelector(".response-view"),
+        responseCode: article.querySelector(".response-code"),
+        error: article.querySelector(".error-view"),
+        preview: article.querySelector(".preview-view"),
+        responseTab: article.querySelector('[data-view="response"]'),
+        previewTab: article.querySelector('[data-view="preview"]'),
+        copy: article.querySelector(".copy-button"),
+        htmlDocument: "",
+        content: ""
+      };
+      article.addEventListener("click", (event) => {
+        const tab = event.target.closest("[data-view]");
+        if (tab) showCardView(card, tab.dataset.view);
+        if (event.target.closest(".copy-button")) copyResponse(card);
+      });
+      return card;
+    }
+
+    function setupCards() {
+      elements.grid.replaceChildren();
+      state.cards.clear();
+      CONFIG.models.forEach((_, index) => {
+        const letter = index < 26 ? String.fromCharCode(65 + index) : `A${String.fromCharCode(65 + index - 26)}`;
+        const card = makeCard(letter);
+        state.cards.set(letter, card);
+        elements.grid.append(card.article);
+      });
+    }
+
+    function setStatus(card, status) {
+      card.status.classList.remove("status-ready", "status-thinking", "status-error");
+      card.status.classList.add(`status-${status.toLowerCase()}`);
+      card.statusLabel.textContent = status;
+    }
+
+    function resetCard(card) {
+      card.identity.hidden = true;
+      card.identity.classList.remove("is-revealed");
+      card.empty.hidden = true;
+      card.skeleton.hidden = false;
+      card.response.hidden = true;
+      card.error.hidden = true;
+      card.preview.hidden = true;
+      card.preview.removeAttribute("srcdoc");
+      card.previewTab.hidden = true;
+      card.copy.hidden = true;
+      card.responseTab.setAttribute("aria-selected", "true");
+      card.previewTab.setAttribute("aria-selected", "false");
+      card.responseCode.textContent = "";
+      card.error.textContent = "";
+      card.content = "";
+      card.htmlDocument = "";
+      card.latency.textContent = "In progress";
+      setStatus(card, "Thinking");
+    }
+
+    function shuffleModels(models) {
+      const shuffled = [...models];
+      for (let index = shuffled.length - 1; index > 0; index--) {
+        const random = new Uint32Array(1);
+        if (globalThis.crypto?.getRandomValues) crypto.getRandomValues(random);
+        else random[0] = Math.floor(Math.random() * 4294967296);
+        const other = Math.floor((random[0] / 4294967296) * (index + 1));
+        [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
+      }
+      const signature = shuffled.map((model) => model.id).join("|");
+      if (shuffled.length > 1 && signature === state.previousSignature) {
+        shuffled.push(shuffled.shift());
+      }
+      state.previousSignature = shuffled.map((model) => model.id).join("|");
+      return shuffled;
+    }
+
+    function extractText(payload, protocol) {
+      const value = protocol === "ollama" ? payload?.message?.content : payload?.choices?.[0]?.message?.content;
+      if (typeof value === "string") return value;
+      if (Array.isArray(value)) return value.map((part) => typeof part === "string" ? part : (part?.text || "")).join("");
+      throw new Error("The endpoint returned no text content. Check its chat-completions response format.");
+    }
+
+    function getHtmlDocument(text) {
+      const blocks = [...text.matchAll(/```([^\n]*)\n([\s\S]*?)```/g)];
+      const htmlBlock = blocks.find((match) => /\bhtml?\b/i.test(match[1]) || /<!doctype\s+html|<html[\s>]/i.test(match[2]));
+      let html = htmlBlock ? htmlBlock[2].trim() : "";
+      if (!html && /^\s*(?:<!doctype\s+html|<html[\s>])/i.test(text)) html = text.trim();
+      if (!html && !blocks.length && /<(?:button|main|div|section|style)\b/i.test(text)) html = text.trim();
+      if (!html) return "";
+      if (/<html[\s>]/i.test(html) || /<!doctype\s+html/i.test(html)) return html;
+      return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><script src="https://cdn.tailwindcss.com"><\/script><style>body{min-height:100vh;display:grid;place-items:center;padding:2rem;background:#0b1020;color:white;font-family:system-ui,sans-serif}button{cursor:pointer}</style></head><body>${html}</body></html>`;
+    }
+
+    function showCardView(card, view) {
+      if (!card.content || (view === "preview" && !card.htmlDocument)) return;
+      const previewing = view === "preview";
+      card.response.hidden = previewing;
+      card.preview.hidden = !previewing;
+      card.responseTab.setAttribute("aria-selected", String(!previewing));
+      card.previewTab.setAttribute("aria-selected", String(previewing));
+      if (previewing && !card.preview.hasAttribute("srcdoc")) card.preview.srcdoc = card.htmlDocument;
+    }
+
+    function showResponse(card, text) {
+      card.content = text;
+      card.responseCode.textContent = text;
+      card.skeleton.hidden = true;
+      card.empty.hidden = true;
+      card.error.hidden = true;
+      card.response.hidden = false;
+      card.preview.hidden = true;
+      card.copy.hidden = false;
+      card.htmlDocument = getHtmlDocument(text);
+      card.previewTab.hidden = !card.htmlDocument;
+    }
+
+    async function copyResponse(card) {
+      try {
+        await navigator.clipboard.writeText(card.content);
+        card.copy.textContent = "Copied";
+      } catch {
+        const helper = document.createElement("textarea");
+        helper.value = card.content;
+        helper.style.position = "fixed";
+        helper.style.opacity = "0";
+        document.body.append(helper);
+        helper.select();
+        const copied = document.execCommand("copy");
+        helper.remove();
+        card.copy.textContent = copied ? "Copied" : "Copy failed";
+      }
+      window.setTimeout(() => { card.copy.textContent = "Copy"; }, 1400);
+    }
+
+    function liveConfigError(model) {
+      if (!model.baseUrl || !model.model) return "Configuration incomplete: set this model's baseUrl and model ID in CONFIG.models.";
+      if (!["openai-compatible", "ollama"].includes(model.protocol)) return `Unsupported protocol: ${model.protocol}`;
+      if (model.requiresApiKey && !model.apiKey) return "API key required. Set apiKey for this model in CONFIG.models, or use a compatible private proxy.";
+      return "";
+    }
+
+    async function requestModel(model, prompt) {
+      if (state.mockMode) {
+        if (model.mockError) throw new Error(model.mockError);
+        await new Promise((resolve) => setTimeout(resolve, model.mockDelayMs || 1000));
+        return model.mockResponse || "Mock response. Add a mockResponse in CONFIG.models to customize it.";
+      }
+      const configError = liveConfigError(model);
+      if (configError) throw new Error(configError);
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), CONFIG.requestTimeoutMs);
+      const baseUrl = model.baseUrl.replace(/\/+$/, "");
+      const isOllama = model.protocol === "ollama";
+      const url = isOllama ? `${baseUrl}/api/chat` : `${baseUrl}/chat/completions`;
+      const headers = { "Content-Type": "application/json", ...(model.headers || {}) };
+      if (model.apiKey) headers.Authorization = `Bearer ${model.apiKey}`;
+      const body = isOllama
+        ? { model: model.model, messages: [{ role: "user", content: prompt }], stream: false }
+        : { model: model.model, messages: [{ role: "user", content: prompt }], stream: false };
+      try {
+        const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: controller.signal });
+        const raw = await response.text();
+        if (!response.ok) {
+          let detail = raw;
+          try { const parsed = JSON.parse(raw); detail = parsed?.error?.message || parsed?.error || parsed?.message || raw; } catch { /* Keep the response text. */ }
+          throw new Error(`HTTP ${response.status}${detail ? `: ${String(detail).slice(0, 500)}` : ""}`);
+        }
+        let payload;
+        try { payload = JSON.parse(raw); } catch { throw new Error("The endpoint returned invalid JSON."); }
+        return extractText(payload, model.protocol);
+      } catch (error) {
+        if (error.name === "AbortError") throw new Error(`Request timed out after ${Math.round(CONFIG.requestTimeoutMs / 1000)} seconds.`);
+        if (error instanceof TypeError) throw new Error(`Network/CORS error for ${model.name}. Check that the endpoint is running and allows browser requests.`);
+        throw error;
+      } finally {
+        window.clearTimeout(timeout);
+      }
+    }
+
+    function revealIdentities(show) {
+      state.revealed = show;
+      elements.revealLabel.textContent = show ? "Hide Identities" : "Reveal Identities";
+      elements.reveal.setAttribute("aria-pressed", String(show));
+      elements.revealBanner.classList.toggle("is-revealed", show);
+      state.assignments.forEach(({ letter, model }) => {
+        const card = state.cards.get(letter);
+        if (!card) return;
+        if (show) {
+          card.providerMark.textContent = model.mark || (model.provider || "?").slice(0, 1).toUpperCase();
+          card.providerName.textContent = model.provider || "Provider";
+          card.modelName.textContent = model.name || model.model || model.id;
+          card.identity.hidden = false;
+          requestAnimationFrame(() => card.identity.classList.add("is-revealed"));
+        } else {
+          card.identity.classList.remove("is-revealed");
+          window.setTimeout(() => { if (!state.revealed) card.identity.hidden = true; }, 480);
+        }
+      });
+    }
+
+    function updateMode() {
+      elements.mode.setAttribute("aria-checked", String(state.mockMode));
+      elements.mode.setAttribute("aria-label", state.mockMode ? "Use mock responses" : "Use live model endpoints");
+      elements.modeIndicator.textContent = state.mockMode ? "DEMO MODE" : "LIVE MODE";
+      elements.modeIndicator.className = state.mockMode
+        ? "rounded-full border border-emerald-300/20 bg-emerald-300/[.07] px-3 py-1.5 font-mono text-emerald-200"
+        : "rounded-full border border-amber-300/20 bg-amber-300/[.07] px-3 py-1.5 font-mono text-amber-200";
+      elements.modeDescription.textContent = state.mockMode ? "Safe demo · no API keys needed" : "Live requests · browser CORS required";
+    }
+
+    async function runBenchmark() {
+      if (state.running) return;
+      const prompt = elements.prompt.value.trim();
+      if (!prompt) {
+        elements.summary.textContent = "Enter a prompt before running.";
+        elements.prompt.focus();
+        return;
+      }
+      if (!CONFIG.models.length) {
+        elements.summary.textContent = "Add at least one model to CONFIG.models.";
+        return;
+      }
+      state.running = true;
+      state.hasRun = false;
+      state.revealed = false;
+      elements.revealBanner.classList.remove("is-revealed");
+      elements.reveal.disabled = true;
+      elements.revealLabel.textContent = "Reveal Identities";
+      elements.run.disabled = true;
+      elements.runLabel.textContent = "Running models…";
+      elements.summary.textContent = `0 / ${CONFIG.models.length} responses complete`;
+
+      const shuffled = shuffleModels(CONFIG.models);
+      state.assignments = shuffled.map((model, index) => ({ letter: [...state.cards.keys()][index], model }));
+      state.assignments.forEach(({ letter }) => resetCard(state.cards.get(letter)));
+      let completeCount = 0;
+      const started = performance.now();
+
+      const outcomes = await Promise.allSettled(state.assignments.map(async ({ letter, model }) => {
+        const card = state.cards.get(letter);
+        const requestStarted = performance.now();
+        try {
+          const text = await requestModel(model, prompt);
+          showResponse(card, text);
+          setStatus(card, "Ready");
+        } catch (error) {
+          card.skeleton.hidden = true;
+          card.empty.hidden = true;
+          card.error.hidden = false;
+          card.error.textContent = error?.message || "Unknown request error.";
+          setStatus(card, "Error");
+        } finally {
+          card.latency.textContent = `${((performance.now() - requestStarted) / 1000).toFixed(2)} s`;
+          completeCount++;
+          elements.summary.textContent = `${completeCount} / ${CONFIG.models.length} responses complete`;
+        }
+      }));
+
+      // Promise.allSettled keeps one failed provider from blocking the rest of the arena.
+      const fulfilled = outcomes.filter((outcome) => outcome.status === "fulfilled").length;
+      const elapsed = ((performance.now() - started) / 1000).toFixed(2);
+      const errors = state.assignments.filter(({ letter }) => state.cards.get(letter).statusLabel.textContent === "Error").length;
+      state.running = false;
+      state.hasRun = true;
+      elements.run.disabled = false;
+      elements.runLabel.textContent = "Run Again";
+      elements.reveal.disabled = false;
+      elements.summary.textContent = errors
+        ? `${CONFIG.models.length - errors} ready · ${errors} error${errors === 1 ? "" : "s"} · ${elapsed} s total`
+        : `All ${fulfilled} responses ready · ${elapsed} s total`;
+    }
+
+    elements.mode.addEventListener("click", () => {
+      if (state.running) return;
+      state.mockMode = !state.mockMode;
+      updateMode();
+    });
+    elements.run.addEventListener("click", runBenchmark);
+    elements.reveal.addEventListener("click", () => {
+      if (state.hasRun) revealIdentities(!state.revealed);
+    });
+
+    setupCards();
+    updateMode();
+  </script>
+</body>
+</html>
