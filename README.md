@@ -38,6 +38,10 @@ The benchmark material is optional and independent from the coding-agent pack. I
 - [Benchmark results](benchmarks/inspect-benchmark/results.md) — recorded HumanEval results and throughput notes.
 - [Custom benchmark](benchmarks/custom-benchmark/README.md) — a small repeatable VS Code/Copilot model comparison.
 
+### Presentation app
+
+- [Blind LLM Arena](apps/blind-llm-arena/README.md) — a standalone, single-file app for the v3 talk's anonymous code challenge and audience vote. Open `apps/blind-llm-arena/index.html` to run its mock demo, or configure live model endpoints.
+
 ## License
 
 [KILab is released under the MIT License](LICENSE).
