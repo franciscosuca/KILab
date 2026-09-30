@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Frontier Quality on Local Hardware — a practical guide to models, memory, and harnesses.">
+<title>Frontier Quality on Local Hardware</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main class="deck" id="deck">
+
+  <!-- 1 · Title -->
+  <section class="slide" id="s1">
+    <div class="slide-inner center">
+      <p class="kicker f">AISDLC Workshop</p>
+      <h1 class="f d1">Frontier Quality<br>on Local Hardware</h1>
+      <p class="lede f d3">A practical guide to open-weight models, memory &amp; bandwidth, inference servers, and harnesses.</p>
+    </div>
+  </section>
+
+  <!-- 2 · Why local -->
+  <section class="slide" id="s2">
+    <div class="slide-inner wide">
+      <p class="kicker f">01 · Why local</p>
+      <h2 class="f d1">AI is useful. So why run it yourself?</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Offline</span><span class="v">The model works on a flight, on a train, anywhere — no connection required.</span></li>
+        <li><span class="k">Privacy</span><span class="v">Your data stays on your machine. Nothing leaves the room.</span></li>
+        <li><span class="k">Saving $</span><span class="v">You already paid for the hardware. Stop paying again for the tokens.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3 · The gap has closed -->
+  <section class="slide" id="s3">
+    <div class="slide-inner">
+      <p class="kicker f">02 · The moment</p>
+      <h2 class="f d1">The gap has closed</h2>
+      <p class="lede f d2">In 2026, a model running on your own machine can rival the frontier APIs. You don't need to be a researcher — just a regular user who asks more than a handful of questions a day.</p>
+      <p class="note f d3">Reference model: <span class="ph">&lt;open_weight_model&gt;</span> — a sparse model that rivals <span class="ph">&lt;frontier_model_reference&gt;</span>.</p>
+    </div>
+  </section>
+
+  <!-- 4 · Dense vs MoE -->
+  <section class="slide" id="s4">
+    <div class="slide-inner wide">
+      <p class="kicker f">03 · One key concept</p>
+      <h2 class="f d1">Dense vs. sparse (MoE)</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Dense</span><span class="v">Fires <strong>every parameter</strong> for every token — the generalist who brings the full toolkit every time. Strongest, but heaviest.</span></li>
+        <li><span class="k">Sparse / MoE</span><span class="v">Activates <strong>only the relevant experts</strong> per token — frontier-level capability at a fraction of the compute cost.</span></li>
+      </ul>
+      <p class="note f d3">Tools like <strong>LMFIT</strong> help match a sparse model to your machine.</p>
+    </div>
+  </section>
+
+  <!-- 5 · Two numbers -->
+  <section class="slide" id="s5">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware</p>
+      <h2 class="f d1">Know your numbers</h2>
+      <p class="lede f d2">Local AI boils down to two numbers.</p>
+      <ul class="rows f d3">
+        <li><span class="k">RAM</span><span class="v"><strong>Can it fit?</strong> Capacity decides whether the model runs at all.</span></li>
+        <li><span class="k">Bandwidth</span><span class="v"><strong>How fast does it run?</strong> GB/s decides tokens per second.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6 · RAM -->
+  <section class="slide" id="s6">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware — Capacity</p>
+      <h2 class="f d1">RAM is the hard constraint</h2>
+      <p class="body f d2">If the model doesn't fit in memory, it doesn't run. Period. The variable cost is the <strong>KV cache</strong> — the buffer that holds your conversation so the model can attend to prior context.</p>
+      <ul class="rows f d3">
+        <li><span class="k">Under 128K</span><span class="v">Roughly <span class="ph">&lt;memory_for_local_llm&gt;</span> GB of RAM.</span></li>
+        <li><span class="k">Up to 256K</span><span class="v">The KV cache grows — up to <span class="ph">&lt;placeholder&gt;</span> GB more, depending on the model.</span></li>
+      </ul>
+      <p class="note f d4">Check total RAM, subtract the OS — whatever remains is what you have to play with.</p>
+    </div>
+  </section>
+
+  <!-- 7 · Bandwidth -->
+  <section class="slide" id="s7">
+    <div class="slide-inner">
+      <p class="kicker f">04 · Hardware — Speed</p>
+      <h2 class="f d1">Bandwidth is the speed</h2>
+      <p class="lede f d2">RAM is whether the car fits in the garage.<br>Bandwidth is how fast it drives on the highway.</p>
+      <p class="body f d3">More GB/s means more tokens per second. Frontier APIs rely on massive bandwidth clusters to serve users at scale — on your machine, the same physics applies.</p>
+    </div>
+  </section>
+
+  <!-- 8 · Software stack -->
+  <section class="slide" id="s8">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software</p>
+      <h2 class="f d1">Two layers: server + harness</h2>
+      <p class="lede f d2">Many options — and it's hard to tell what's good from what's merely popular.</p>
+      <ul class="rows f d3">
+        <li><span class="k">Server</span><span class="v">Serves the model. Turns the weights into a running engine.</span></li>
+        <li><span class="k">Harness</span><span class="v">Sends the prompt, renders the output. Your interface to the model.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 · Server -->
+  <section class="slide" id="s9">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software — Server</p>
+      <h2 class="f d1">Pick a server, keep the defaults</h2>
+      <ul class="rows f d2">
+        <li><span class="k">MLX</span><span class="v">Designed for macOS, optimised for Apple Silicon. Best performance on Mac.</span></li>
+        <li><span class="k">GGUF</span><span class="v">Cross-platform. Runs everywhere — not always as optimised on Mac.</span></li>
+      </ul>
+      <p class="body f d3"><strong>Rule of thumb:</strong> use default configurations. And don't use <strong>Ollama</strong> — you'll sacrifice significant performance.</p>
+      <p class="note f d4">[ benchmark: same model on Ollama vs. LM Studio — link to come ]</p>
+    </div>
+  </section>
+
+  <!-- 10 · Harness -->
+  <section class="slide" id="s10">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software — Harness</p>
+      <h2 class="f d1">The harness eats your context</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Heavy IDEs</span><span class="v">(e.g. VS Code) inject large system prompts into every request — consuming the context window you paid for in RAM.</span></li>
+        <li><span class="k">Light clients</span><span class="v">(e.g. Pi) leave the context window open for your actual prompt. Smoother experience, pared-back UI.</span></li>
+      </ul>
+      <p class="note f d3">Reference: <a href="https://arena.ai/blog/coding-agents-harness-tax">Coding Agents &amp; the Harness Tax — arena.ai</a></p>
+    </div>
+  </section>
+
+  <!-- 11 · Honest take -->
+  <section class="slide" id="s11">
+    <div class="slide-inner">
+      <p class="kicker f">06 · Closing</p>
+      <h2 class="f d1">Let's be honest</h2>
+      <p class="lede f d2">Copilot on auto, or Claude with Opus, is easier. Zero setup, excellent answers. It always will be.</p>
+      <p class="body f d3">But for everyday work — writing, coding, research, brainstorming — local AI serves just as well. No subscription, no rate limits, no privacy trade-off. We already own the machines.</p>
+    </div>
+  </section>
+
+  <!-- 12 · The question -->
+  <section class="slide" id="s12">
+    <div class="slide-inner center">
+      <p class="kicker f">We're no longer talking about someday</p>
+      <h2 class="f d1">The question isn't whether local AI can compete.</h2>
+      <p class="lede f d2">It's whether you're ready to <em class="acc">stop paying for what you can run yourself</em>.</p>
+      <p class="meta f d4">Thank you</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="progress" data-progress></div>
+<div class="hud" data-counter>01 / 12</div>
+<div class="hint" data-hint>Scroll · ↑ ↓ · Space</div>
+
+<script src="script.js"></script>
+</body>
+</html>

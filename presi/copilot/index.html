@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Frontier Quality on Local Hardware — a practical guide to open-weight models, memory & bandwidth, inference servers, and harnesses.">
+<title>Frontier Quality on Local Hardware</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main class="deck" id="deck">
+
+  <!-- 1 · Cover -->
+  <section class="slide" id="s1" aria-label="Slide 1: Title">
+    <div class="slide-inner center">
+      <p class="kicker f">AISDLC Workshop</p>
+      <h1 class="f d1">Frontier Quality<br>on Local Hardware</h1>
+      <p class="lede f d2">A practical guide to open-weight models, memory &amp; bandwidth, inference servers, and harnesses.</p>
+      <p class="meta f d3">Francisco Susana · <a href="https://github.com/franciscosuca">github.com/franciscosuca</a></p>
+    </div>
+  </section>
+
+  <!-- 2 · Why local -->
+  <section class="slide" id="s2" aria-label="Slide 2: Why local">
+    <div class="slide-inner wide">
+      <p class="kicker f">01 · Why local</p>
+      <h2 class="f d1">AI is useful. So why run it yourself?</h2>
+      <p class="note f d2">It all began on a 10-hour flight when I tried to code offline without Copilot. That curiosity led to early experiments running Ollama on an M1 inside VS Code — and the mistakes that came with it.</p>
+      <ul class="rows f d3">
+        <li><span class="k">Offline</span><span class="v">The model works on a flight, on a train, anywhere — no connection required.</span></li>
+        <li><span class="k">Privacy</span><span class="v">Your data stays on your machine. Nothing leaves the room.</span></li>
+        <li><span class="k">Saving $</span><span class="v">You already paid for the hardware. Stop paying again for the tokens.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3 · Is there still a gap? -->
+  <section class="slide" id="s3" aria-label="Slide 3: Is there still a gap">
+    <div class="slide-inner wide">
+      <p class="kicker f">02 · The moment</p>
+      <h2 class="f d1">Is there still a gap?</h2>
+      <p class="lede f d2">We put a local open-weight model, <span class="mono">Qwen3.8-27B-MLX-4bit</span>, up against a frontier model, <span class="mono">gpt-6-luna</span>.</p>
+      <figure class="figure f d3">
+        <img src="assets/aa-intelligence-index.png" alt="Artificial Analysis Intelligence Index chart showing closed, open-but-large, and open-weight models">
+        <figcaption>Artificial Analysis Intelligence Index. Annotations mark closed models ($$$), open-but-large models ($$), and small/medium open-weight models ($). One chart illustrates the trend — it does not prove universal equivalence.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 4 · Dense vs sparse (MoE) -->
+  <section class="slide" id="s4" aria-label="Slide 4: Dense versus sparse">
+    <div class="slide-inner wide">
+      <p class="kicker f">03 · One key concept</p>
+      <h2 class="f d1">Dense vs. sparse (MoE)</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Dense</span><span class="v">Uses <strong>all parameters</strong> for each token — the generalist who brings the full toolkit every time.</span></li>
+        <li><span class="k">Sparse / MoE</span><span class="v">Activates <strong>selected experts</strong> per token — but <strong>all model weights still need to fit in memory</strong>.</span></li>
+      </ul>
+      <p class="note f d3">Tools like <strong>LMFIT</strong> help match a model to your hardware.</p>
+    </div>
+  </section>
+
+  <!-- 5 · The two hardware numbers -->
+  <section class="slide" id="s5" aria-label="Slide 5: The two hardware numbers">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware</p>
+      <h2 class="f d1">The two hardware numbers</h2>
+      <p class="lede f d2">Local AI boils down to two numbers.</p>
+      <ul class="rows f d3">
+        <li><span class="k">RAM</span><span class="v">Answers <strong>“can it fit?”</strong> Capacity decides whether the model runs at all.</span></li>
+        <li><span class="k">Bandwidth</span><span class="v">Helps answer <strong>“how fast can it generate?”</strong> GB/s influences tokens per second.</span></li>
+      </ul>
+      <figure class="figure f d4">
+        <img src="assets/bandwidth-comparison.jpeg" alt="Memory Bandwidth Comparison chart showing various Apple Silicon chips and server memory bandwidth">
+        <figcaption>Memory bandwidth across Apple Silicon generations and server platforms.</figcaption>
+      </figure>
+      <p class="note f d5"><strong>Finding your bandwidth.</strong> <span class="mono">Bandwidth = Bus Width (bits) × Transfer Rate (MT/s) / 8</span>. This MacBook Pro M5 uses a 256-bit LPDDR5X bus at 8533 MT/s → 256 × 8533 / 8 ≈ 273 GB/s.</p>
+    </div>
+  </section>
+
+  <!-- 6 · RAM is the hard constraint -->
+  <section class="slide" id="s6" aria-label="Slide 6: RAM is the hard constraint">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware — Capacity</p>
+      <h2 class="f d1">RAM is the hard constraint</h2>
+      <p class="body f d2">Model weights plus the <strong>KV cache</strong> must fit in memory. The KV cache holds your conversation so the model can attend to prior context — it grows with context length and depends on the architecture and cache precision.</p>
+      <div class="table-wrap f d3">
+        <table class="spec">
+          <caption>MacBook Pro M5, 32 GB — what fits (≈24 GB available for models).</caption>
+          <thead>
+            <tr>
+              <th scope="col">Model</th>
+              <th scope="col">Assumed architecture</th>
+              <th scope="col">Weights</th>
+              <th scope="col">KV @32K</th>
+              <th scope="col">KV @128K</th>
+              <th scope="col">KV @256K</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Qwen3.8-27B-MLX-4bit</th>
+              <td>Dense; 27B parameters</td>
+              <td>~14.5 GB</td>
+              <td>~6 GB</td>
+              <td class="red">~24 GB</td>
+              <td class="red">~48 GB</td>
+            </tr>
+            <tr>
+              <th scope="row">Gemma-4-26B-A4B-it-QAT-MLX-4bit</th>
+              <td>MoE; 26B total / 4B active</td>
+              <td>~14 GB</td>
+              <td>~3 GB</td>
+              <td class="red">~13 GB</td>
+              <td class="red">~26 GB</td>
+            </tr>
+            <tr>
+              <th scope="row">Qwen3.5-9B-MLX-4bit</th>
+              <td>Dense; 9B parameters</td>
+              <td>~5 GB</td>
+              <td>~4.5 GB</td>
+              <td>~18 GB</td>
+              <td class="red">~36 GB</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note f d4"><strong>Assumptions:</strong> 4-bit weights ≈ 0.5 bytes/param + ~7% overhead. Apple reserves ~25% of memory for the system — leaving roughly 75% available for models. This can be adjusted (e.g. via memory allocation settings), but the system may not run stably if you push it too far.</p>
+    </div>
+  </section>
+
+  <!-- 7 · Bandwidth is the speed -->
+  <section class="slide" id="s7" aria-label="Slide 7: Bandwidth is the speed">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware — Speed</p>
+      <h2 class="f d1">Bandwidth is the speed</h2>
+      <p class="lede f d2">RAM is whether the car fits in the garage.<br>Bandwidth is how quickly it travels on the highway.</p>
+      <p class="body f d3">Rule of thumb: <span class="mono">tokens/s ≈ memory bandwidth (GB/s) ÷ GB of weights read per generated token</span>. Indicative output rates on a MacBook Pro M5 (~273 GB/s):</p>
+      <ul class="rows f d4">
+        <li><span class="k">~20 tok/s</span><span class="v"><span class="mono">Qwen3.8-27B</span> dense.</span></li>
+        <li><span class="k">~110 tok/s</span><span class="v"><span class="mono">Gemma-4 A4B</span> MoE — only ~2.5 GB of active weights per token.</span></li>
+        <li><span class="k">~60 tok/s</span><span class="v"><span class="mono">Qwen3.5-9B</span> dense.</span></li>
+      </ul>
+      <p class="note f d5">These are the speeds for running the models in 4-bit. Real results are often 60–80% of these and depend on hardware, runtime, context length, and implementation. Input prefill is often faster than token generation; the two have different performance characteristics.</p>
+    </div>
+  </section>
+
+  <!-- 8 · Server + harness -->
+  <section class="slide" id="s8" aria-label="Slide 8: The software stack">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software</p>
+      <h2 class="f d1">Two layers: server + harness</h2>
+      <div class="table-wrap f d2">
+        <table class="spec">
+          <thead>
+            <tr>
+              <th scope="col">Layer</th>
+              <th scope="col">What it does</th>
+              <th scope="col">Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Server</th>
+              <td>Runs the model. Turns the weights into a running engine.</td>
+              <td>Ollama · vLLM · MLX · llama.cpp</td>
+            </tr>
+            <tr>
+              <th scope="row">Harness</th>
+              <td>Supplies the prompt and presents the result. Your interface to the model.</td>
+              <td>LM Studio · VSCode · Codex · Pi</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 · Choose a server -->
+  <section class="slide" id="s9" aria-label="Slide 9: Choose a server">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software — Server</p>
+      <h2 class="f d1">Choose a server, keep the defaults</h2>
+      <ul class="rows f d2">
+        <li><span class="k">MLX</span><span class="v">Optimized for Apple Silicon. Best performance on a Mac.</span></li>
+        <li><span class="k">GGUF</span><span class="v">Cross-platform. Runs everywhere — not always as optimized on Mac.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 10 · The harness tax -->
+  <section class="slide" id="s10" aria-label="Slide 10: The harness tax">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software — Harness</p>
+      <h2 class="f d1">The harness tax</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Heavier IDEs</span><span class="v">(e.g. VS Code) may add system and context overhead to every request — consuming the context window you paid for in RAM.</span></li>
+        <li><span class="k">Lighter clients</span><span class="v">(e.g. Pi) leave more of the context window for your actual prompt.</span></li>
+      </ul>
+      <figure class="figure f d3">
+        <video src="assets/arena-harness-tax.mov" autoplay loop muted playsinline alt="arena.ai SWE-bench Lite cost-scaling replay"></video>
+        <figcaption>arena.ai SWE-bench Lite cost-scaling replay. Read more: <a href="https://arena.ai/blog/coding-agents-harness-tax">Coding Agents &amp; the Harness Tax — arena.ai</a></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 11 · An honest take -->
+  <section class="slide" id="s11" aria-label="Slide 11: An honest take">
+    <div class="slide-inner">
+      <p class="kicker f">06 · Closing</p>
+      <h2 class="f d1">An honest take</h2>
+      <p class="lede f d2">Frontier tools are easier — and they remain a strong choice. Zero setup, excellent answers.</p>
+      <p class="body f d3">But local models can be sufficient for many everyday tasks — writing, coding, research, brainstorming. The trade-offs are privacy, cost, and availability, and they're worth weighing honestly.</p>
+    </div>
+  </section>
+
+  <!-- 12 · Closing -->
+  <section class="slide" id="s12" aria-label="Slide 12: Closing">
+    <div class="slide-inner center">
+      <p class="kicker f">We're no longer talking about someday</p>
+      <h2 class="f d1">The question isn't whether local AI can compete.</h2>
+      <p class="lede f d2">It's whether you're ready to <em class="acc">stop paying for what you can run yourself</em>.</p>
+      <p class="meta f d3">Thank you.</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="progress" data-progress></div>
+<div class="hud" data-counter>01 / 12</div>
+<div class="hint" data-hint>Scroll · ↑ ↓ · Space</div>
+
+<script src="script.js"></script>
+</body>
+</html>
