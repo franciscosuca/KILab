@@ -34,7 +34,7 @@ Select the models to include before each run. Their assignment to Model A, Model
 
 ## Execution and artifacts
 
-Local models are prompted through `curl`. Copilot models are prompted noninteractively through the Copilot CLI, with tools denied. The server writes every completed response to a mode-`0600` file in a uniquely named operating-system temporary directory, reads that artifact for display, and deletes the directory after one hour.
+Local models are prompted through `curl`. Copilot models are prompted through the official SDK's authenticated Copilot CLI runtime, with tools denied. The server writes every completed response to a mode-`0600` file in a uniquely named operating-system temporary directory, reads that artifact for display, and deletes the directory after one hour.
 
 Generated HTML can be opened in each result's **Preview** tab. Previews use sandboxed iframes, and response source is rendered as text.
 

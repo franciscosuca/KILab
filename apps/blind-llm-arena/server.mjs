@@ -246,21 +246,25 @@ async function runLocalModel(model, prompt) {
 }
 
 async function runCopilotModel(model, prompt, outputPath) {
-  const { stdout } = await runCommand(
-    "copilot",
-    [
-      "--model", model.model,
-      "--prompt", prompt,
-      "--silent",
-      "--no-ask-user",
-      "--deny-tool=shell,write,read,url,memory",
-      "--no-auto-update",
-      "--no-remote-export",
-    ],
-    { cwd: dirname(outputPath), timeoutMs: REQUEST_TIMEOUT_MS },
-  );
-  if (!stdout.trim()) throw new Error("Copilot returned no output");
-  return stdout.trim();
+  const client = new CopilotClient();
+  try {
+    await client.start();
+    const session = await client.createSession({
+      model: model.model,
+      workingDirectory: dirname(outputPath),
+      infiniteSessions: { enabled: false },
+      onPermissionRequest: () => ({
+        kind: "reject",
+        feedback: "Tools are disabled for arena responses. Return the answer directly.",
+      }),
+    });
+    const response = await session.sendAndWait({ prompt }, REQUEST_TIMEOUT_MS);
+    const text = response?.data?.content;
+    if (typeof text !== "string" || !text.trim()) throw new Error("Copilot returned no output");
+    return text.trim();
+  } finally {
+    await client.stop();
+  }
 }
 
 function safeFilename(value) {
@@ -274,13 +278,14 @@ async function executeModel(model, prompt) {
     ? await runCopilotModel(model, prompt, outputPath)
     : await runLocalModel(model, prompt);
   await writeFile(outputPath, text, { encoding: "utf8", mode: 0o600 });
+  const saved = await readFile(outputPath, "utf8");
   const token = basename(runDir);
   artifacts.set(token, runDir);
   setTimeout(() => {
     artifacts.delete(token);
     rm(runDir, { recursive: true, force: true });
   }, 60 * 60 * 1000).unref();
-  return { text, artifact: `/api/artifacts/${encodeURIComponent(token)}/${encodeURIComponent(basename(outputPath))}` };
+  return { text: saved, artifact: `/api/artifacts/${encodeURIComponent(token)}/${encodeURIComponent(basename(outputPath))}` };
 }
 
 async function readJsonBody(request) {

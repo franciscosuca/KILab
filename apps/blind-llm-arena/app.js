@@ -118,7 +118,13 @@ function shuffle(models) {
 function htmlDocument(text) {
   const fenced = text.match(/```(?:html)?\s*\n([\s\S]*?)```/i)?.[1]?.trim();
   const value = fenced || text.trim();
-  return /<!doctype\s+html|<html[\s>]/i.test(value) ? value : "";
+  if (!/<!doctype\s+html|<html[\s>]/i.test(value)) return "";
+  const documentNode = new DOMParser().parseFromString(value, "text/html");
+  const policy = documentNode.createElement("meta");
+  policy.httpEquiv = "Content-Security-Policy";
+  policy.content = "default-src 'none'; script-src 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'";
+  documentNode.head.prepend(policy);
+  return `<!doctype html>${documentNode.documentElement.outerHTML}`;
 }
 
 function showView(card, view) {
