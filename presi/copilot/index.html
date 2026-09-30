@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Frontier Quality on Local Hardware — open-weight models, memory & bandwidth, inference servers, and harnesses.">
+<title>Frontier Quality on Local Hardware</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main class="deck" id="deck" aria-label="Presentation: Frontier Quality on Local Hardware">
+
+  <!-- 1 · Cover -->
+  <section class="slide" id="s1" aria-label="Slide 1: Cover">
+    <div class="slide-inner center">
+      <p class="kicker f">AISDLC Workshop</p>
+      <h1 class="f d1">Frontier Quality<br>on Local Hardware</h1>
+      <p class="lede f d2">Open-weight models, memory &amp; bandwidth, inference servers, and harnesses — what it actually takes to run capable AI on your own machine.</p>
+      <p class="meta f d3">Presented by Francisco Suárez · <a href="https://github.com/franciscosuca">github.com/franciscosuca</a></p>
+    </div>
+  </section>
+
+  <!-- 2 · Why local -->
+  <section class="slide" id="s2" aria-label="Slide 2: Why local">
+    <div class="slide-inner wide">
+      <p class="kicker f">01 · Why local</p>
+      <h2 class="f d1">Why run AI on your own machine?</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Offline</span><span class="v">The model works on a flight, on a train, anywhere — no connection required.</span></li>
+        <li><span class="k">Privacy</span><span class="v">Your prompts and data stay on your machine. Nothing leaves the room.</span></li>
+        <li><span class="k">Saving money</span><span class="v">You already paid for the hardware. Stop paying again for the tokens.</span></li>
+      </ul>
+      <p class="note f d3">This started as curiosity — and a few early mistakes, like pointing Ollama at an M1 from inside VS Code and wondering why it crawled. Those mistakes became this talk.</p>
+    </div>
+  </section>
+
+  <!-- 3 · Is there still a gap? -->
+  <section class="slide" id="s3" aria-label="Slide 3: Is there still a gap">
+    <div class="slide-inner wide">
+      <p class="kicker f">02 · The comparison</p>
+      <h2 class="f d1">Is there still a gap?</h2>
+      <p class="lede f d2">A local open-weight model — <span class="mono">Qwen3.8-27B-MLX-4bit</span> — measured against a frontier model, <span class="mono">gpt-6-luna</span>.</p>
+      <figure class="figure f d3">
+        <div class="figure-placeholder" role="img" aria-label="Placeholder: Artificial Analysis Intelligence Index chart with handwritten annotations. Source image not yet supplied.">
+          <span class="figure-placeholder-label">Figure to be supplied</span>
+          <span class="figure-placeholder-name mono">aa-intelligence-index.png</span>
+        </div>
+        <figcaption>Artificial Analysis Intelligence Index, annotated by price class: closed models (<span class="mono">$$$</span>), open but large models (<span class="mono">$$</span>), small/medium open-weight models (<span class="mono">$</span>). One chart is evidence, not proof — it shows the gap narrowing on this index, not universal equivalence.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 4 · Dense vs. sparse (MoE) -->
+  <section class="slide" id="s4" aria-label="Slide 4: Dense versus sparse MoE">
+    <div class="slide-inner wide">
+      <p class="kicker f">03 · One key concept</p>
+      <h2 class="f d1">Dense vs. sparse (MoE)</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Dense</span><span class="v">Uses <strong>all parameters</strong> for every token — the full toolkit, every time.</span></li>
+        <li><span class="k">Sparse / MoE</span><span class="v">Activates <strong>only selected experts</strong> per token — far less compute per word.</span></li>
+      </ul>
+      <p class="body f d3">Either way, <strong>all of the model's weights still need to fit in memory</strong> — MoE reduces the work per token, not the size on the shelf.</p>
+      <p class="note f d4">Tools like <strong>LMFIT</strong> help match a model to your hardware.</p>
+    </div>
+  </section>
+
+  <!-- 5 · The two hardware numbers -->
+  <section class="slide" id="s5" aria-label="Slide 5: The two hardware numbers">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware</p>
+      <h2 class="f d1">Local AI boils down to two numbers</h2>
+      <ul class="rows f d2">
+        <li><span class="k">RAM</span><span class="v"><strong>Can it fit?</strong> Capacity decides whether the model runs at all.</span></li>
+        <li><span class="k">Bandwidth</span><span class="v"><strong>How fast can it generate?</strong> GB/s shapes tokens per second.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6 · RAM is the hard constraint -->
+  <section class="slide" id="s6" aria-label="Slide 6: RAM is the hard constraint">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware — Capacity</p>
+      <h2 class="f d1">RAM is the hard constraint</h2>
+      <p class="body f d2">Memory use is the <strong>model weights</strong> plus the <strong>KV cache</strong> — the running record of your conversation. The cache grows with context length, and its size depends on the architecture and cache precision.</p>
+      <table class="data f d3">
+        <caption>Estimated memory figures — provisional, not verified specifications</caption>
+        <thead>
+          <tr>
+            <th scope="col">Model</th>
+            <th scope="col">Assumed architecture</th>
+            <th scope="col" class="num">Weights</th>
+            <th scope="col" class="num">KV @32K</th>
+            <th scope="col" class="num">KV @128K</th>
+            <th scope="col" class="num">KV @256K</th>
+            <th scope="col" class="num">Machine RAM @128K</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" class="mono">Qwen3.8-27B-MLX-4bit</th>
+            <td data-label="Assumed architecture">Dense; ~48 layers / 8 KV heads</td>
+            <td class="num" data-label="Weights">~14.5 GB</td>
+            <td class="num" data-label="KV @32K">~6 GB</td>
+            <td class="num" data-label="KV @128K">~24 GB</td>
+            <td class="num" data-label="KV @256K">~48 GB</td>
+            <td class="num" data-label="Machine RAM @128K">64 GB rec.; 48 GB tight</td>
+          </tr>
+          <tr>
+            <th scope="row" class="mono">Gemma-4-26B-A4B-it-QAT-MLX-4bit</th>
+            <td data-label="Assumed architecture">MoE; 26B total / 4B active; hybrid attention</td>
+            <td class="num" data-label="Weights">~14 GB</td>
+            <td class="num" data-label="KV @32K">~3 GB</td>
+            <td class="num" data-label="KV @128K">~13 GB</td>
+            <td class="num" data-label="KV @256K">~26 GB</td>
+            <td class="num" data-label="Machine RAM @128K">48 GB</td>
+          </tr>
+          <tr>
+            <th scope="row" class="mono">Qwen3.5-9B-MLX-4bit</th>
+            <td data-label="Assumed architecture">Dense; ~36 layers / 8 KV heads</td>
+            <td class="num" data-label="Weights">~5 GB</td>
+            <td class="num" data-label="KV @32K">~4.5 GB</td>
+            <td class="num" data-label="KV @128K">~18 GB</td>
+            <td class="num" data-label="KV @256K">~36 GB</td>
+            <td class="num" data-label="Machine RAM @128K">32 GB tight</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="note f d4">Estimates, not official specifications. 4-bit weights ≈ ~0.5 bytes/parameter + ~7% overhead. KV cache assumes FP16: <span class="mono">2 × layers × KV heads × head dimension × 2 bytes</span> per token; layer/head counts are assumptions. Machine RAM budgets ~8 GB for the OS and apps. A 4-bit KV cache can cut cache memory to roughly a quarter of FP16 (model/runtime dependent) — don't mix with the FP16 figures above. Actual numbers depend on architecture, runtime, context, and quantization.</p>
+    </div>
+  </section>
+
+  <!-- 7 · Bandwidth is the speed -->
+  <section class="slide" id="s7" aria-label="Slide 7: Bandwidth is the speed">
+    <div class="slide-inner wide">
+      <p class="kicker f">04 · Hardware — Speed</p>
+      <h2 class="f d1">Bandwidth is the speed</h2>
+      <p class="lede f d2">RAM is whether the car fits in the garage.<br>Bandwidth is how quickly it travels on the highway.</p>
+      <p class="body f d3"><span class="mono">tokens/s ≈ memory bandwidth (GB/s) ÷ GB of weights read per generated token</span></p>
+      <ul class="rows f d4">
+        <li><span class="k mono">Qwen3.8-27B</span><span class="v">Dense — ~14.5 GB read per token → <strong>~15 tok/s</strong></span></li>
+        <li><span class="k mono">Gemma-4 A4B</span><span class="v">MoE — ~2.5 GB active read per token → <strong>~80 tok/s</strong></span></li>
+        <li><span class="k mono">Qwen3.5-9B</span><span class="v">Dense — ~5 GB read per token → <strong>~44 tok/s</strong></span></li>
+      </ul>
+      <p class="note f d5">Indicative estimates at an illustrative 200 GB/s. Real results are often ~60–80% of the estimate and depend on hardware, runtime, context length, and implementation. For MoE, active parameters set the per-token work — all weights still sit in RAM. Input prefill is often faster than token generation, but the two behave differently.</p>
+    </div>
+  </section>
+
+  <!-- 8 · The software stack -->
+  <section class="slide" id="s8" aria-label="Slide 8: The software stack">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software</p>
+      <h2 class="f d1">Two layers: server + harness</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Server</span><span class="v">Runs the model — turns the weights into a serving engine.</span></li>
+        <li><span class="k">Harness</span><span class="v">Supplies the prompt and presents the result — your interface to the model.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 · Choose a server -->
+  <section class="slide" id="s9" aria-label="Slide 9: Choose a server">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software — Server</p>
+      <h2 class="f d1">Choose a server, keep the defaults</h2>
+      <ul class="rows f d2">
+        <li><span class="k">MLX</span><span class="v">Optimized for Apple Silicon — the natural first choice on a Mac.</span></li>
+        <li><span class="k">GGUF</span><span class="v">Cross-platform — runs almost anywhere, not always as tuned on Mac.</span></li>
+      </ul>
+      <p class="body f d3">Start with default configurations. The source outline recommends avoiding <strong>Ollama</strong> here: its abstraction layers can trade away inference performance compared with running the server closer to the metal — a trade-off, not a universal law.</p>
+      <p class="note f d4">[ benchmark link to come ]</p>
+    </div>
+  </section>
+
+  <!-- 10 · The harness tax -->
+  <section class="slide" id="s10" aria-label="Slide 10: The harness tax">
+    <div class="slide-inner wide">
+      <p class="kicker f">05 · Software — Harness</p>
+      <h2 class="f d1">The harness tax</h2>
+      <ul class="rows f d2">
+        <li><span class="k">Heavier IDEs</span><span class="v">(e.g. VS Code) may add system prompts and context overhead to every request.</span></li>
+        <li><span class="k">Lighter clients</span><span class="v">(e.g. Pi) keep more of the context window for your actual work.</span></li>
+      </ul>
+      <figure class="figure f d3">
+        <div class="figure-placeholder" role="img" aria-label="Placeholder: arena.ai SWE-bench Lite cost-scaling chart replay. Source GIF not yet supplied.">
+          <span class="figure-placeholder-label">Animation to be supplied</span>
+          <span class="figure-placeholder-name mono">arena-harness-tax.gif</span>
+        </div>
+        <figcaption>arena.ai's SWE-bench Lite replay: cost scales with harness overhead. Read more: <a href="https://arena.ai/blog/coding-agents-harness-tax">arena.ai/blog/coding-agents-harness-tax</a></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 11 · An honest take -->
+  <section class="slide" id="s11" aria-label="Slide 11: An honest take">
+    <div class="slide-inner">
+      <p class="kicker f">06 · Closing</p>
+      <h2 class="f d1">An honest take</h2>
+      <p class="lede f d2">Frontier tools are easier — zero setup, excellent answers. They remain a strong choice.</p>
+      <p class="body f d3">Local models are sufficient for many everyday tasks — writing, coding, research, brainstorming. In return you get privacy by default, no subscription or rate limits, and availability anywhere. The trade-off: setup effort, hardware limits, and a gap that still shows on the hardest problems.</p>
+    </div>
+  </section>
+
+  <!-- 12 · Closing -->
+  <section class="slide" id="s12" aria-label="Slide 12: Closing">
+    <div class="slide-inner center">
+      <p class="kicker f">We're no longer talking about someday</p>
+      <h2 class="f d1">The question isn't whether local AI can compete.</h2>
+      <p class="lede f d2">It's whether you're ready to <em class="acc">stop paying for what you can run yourself</em>.</p>
+      <p class="meta f d3">Thank you</p>
+    </div>
+  </section>
+
+</main>
+
+<div class="progress" data-progress aria-hidden="true"></div>
+<div class="hud" data-counter aria-hidden="true">01 / 12</div>
+<div class="hint" data-hint aria-hidden="true">Scroll · ↑ ↓ · Space</div>
+
+<script src="script.js"></script>
+</body>
+</html>
