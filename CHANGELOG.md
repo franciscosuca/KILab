@@ -1,3 +1,14 @@
+## [2.3.0](https://github.com/franciscosuca/KILab/compare/v2.2.0...v2.3.0) (2026-09-30)
+
+### Features
+
+* **add blind-comparison slide decks (gemma4, gpt6luna, kimik3):** feat: add blind-comparison slide decks (gemma4, gpt6luna, kimik3) ([ef71cc1](https://github.com/franciscosuca/KILab/commit/ef71cc1f0ccef6edfa6073adeb9a9306812e4df8))
+* **add presi/copilot deck built from prompt.md spec:** feat: add presi/copilot deck built from prompt.md spec ([e218b21](https://github.com/franciscosuca/KILab/commit/e218b21dd696c15950e3b6f20dbcf2ed1e6fad91))
+
+### Bug Fixes
+
+* **content.:** fix: content. ([feba798](https://github.com/franciscosuca/KILab/commit/feba798c279eb43d460d49cbef69866ec43cff4b))
+
 ## [2.2.0](https://github.com/franciscosuca/KILab/compare/v2.1.0...v2.2.0) (2026-09-29)
 
 ### Features
