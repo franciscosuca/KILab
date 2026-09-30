@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f2f0e8" />
+    <meta
+      name="description"
+      content="A practical field guide to local AI models, memory, inference servers, and prompt overhead."
+    />
+    <title>Frontier Quality on Local Hardware — Field Guide</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body data-tone="light">
+    <a class="skip-link" href="#slide-01">Skip to the presentation</a>
+
+    <header class="site-header" aria-label="Presentation header">
+      <a class="wordmark" href="#slide-01" aria-label="Field Notes, start of presentation">
+        <span class="wordmark-mark" aria-hidden="true">F</span>
+        <span>FIELD NOTES <span class="wordmark-divider">/</span> LOCAL AI</span>
+      </a>
+      <span class="header-caption">A PRACTICAL GUIDE</span>
+    </header>
+    <div class="progress-track" aria-hidden="true">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <main id="presentation" aria-label="Frontier Quality on Local Hardware">
+      <section class="slide slide--cover" id="slide-01" data-tone="light" aria-labelledby="slide-01-title">
+        <div class="slide-shell cover-layout slide-content">
+          <div class="cover-copy">
+            <p class="eyebrow"><span class="eyebrow-index">FIELD GUIDE&nbsp; 01</span><span>LOCAL INFERENCE</span></p>
+            <h1 id="slide-01-title">Frontier quality<br />on local hardware.</h1>
+            <p class="cover-deck">
+              A practical guide to models, memory, inference servers, and the context you actually get to use.
+            </p>
+            <a class="text-link cover-link" href="#slide-02">
+              <span>Explore the guide</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M10 5l5 5-5 5" /></svg>
+            </a>
+          </div>
+
+          <div class="stack-plate" role="img" aria-label="A simple map of a local AI setup: model, memory, and client, all running on your machine.">
+            <div class="plate-heading">
+              <span>THE LOCAL LOOP</span>
+              <span class="plate-status"><i aria-hidden="true"></i> ON DEVICE</span>
+            </div>
+            <div class="stack-flow">
+              <div class="stack-node">
+                <span class="node-index">01</span>
+                <span class="node-copy"><strong>MODEL</strong><small>Weights &amp; capability</small></span>
+                <span class="node-mark" aria-hidden="true">↘</span>
+              </div>
+              <div class="stack-connector" aria-hidden="true"></div>
+              <div class="stack-node">
+                <span class="node-index">02</span>
+                <span class="node-copy"><strong>MEMORY</strong><small>RAM &amp; working context</small></span>
+                <span class="node-mark" aria-hidden="true">↘</span>
+              </div>
+              <div class="stack-connector" aria-hidden="true"></div>
+              <div class="stack-node">
+                <span class="node-index">03</span>
+                <span class="node-copy"><strong>HARNESS</strong><small>Prompt in, answer out</small></span>
+                <span class="node-mark" aria-hidden="true">↗</span>
+              </div>
+            </div>
+            <div class="plate-footer"><span>YOUR MACHINE</span><span>NO NETWORK REQUIRED</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide slide--reasons" id="slide-02" data-tone="light" aria-labelledby="slide-02-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">01</span><span>WHY LOCAL</span></p>
+          <h2 class="section-title" id="slide-02-title">Three reasons to run it here.</h2>
+          <div class="reason-grid">
+            <article class="reason">
+              <span class="reason-number">01</span>
+              <h3>Privacy</h3>
+              <p>Keep sensitive prompts and files on a machine you control.</p>
+            </article>
+            <article class="reason">
+              <span class="reason-number">02</span>
+              <h3>Offline</h3>
+              <p>Keep moving through a flight, an outage, or a patchy connection.</p>
+            </article>
+            <article class="reason">
+              <span class="reason-number">03</span>
+              <h3>Cost</h3>
+              <p>Put hardware you already own to work on everyday tasks.</p>
+            </article>
+          </div>
+          <p class="margin-note"><span class="note-rule" aria-hidden="true"></span>Local AI is a complement to frontier APIs—not a referendum on them.</p>
+        </div>
+      </section>
+
+      <section class="slide slide--models" id="slide-03" data-tone="dark" aria-labelledby="slide-03-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">02</span><span>CHOOSE THE MODEL</span></p>
+          <h2 class="section-title" id="slide-03-title">Dense models do everything.<br />MoE models route the work.</h2>
+          <div class="model-grid">
+            <article class="model-option">
+              <div class="model-option-heading"><h3>Dense</h3><span>ALL PARAMETERS / TOKEN</span></div>
+              <div class="parameter-map" role="img" aria-label="Illustration: all parameter groups are active in a dense model.">
+                <span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span>
+                <span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span><span class="parameter-tile is-on"></span>
+              </div>
+              <p>Every parameter participates for each token. Often straightforward to reason about, but compute-heavy.</p>
+            </article>
+            <article class="model-option">
+              <div class="model-option-heading"><h3>Mixture of Experts</h3><span>SELECTED EXPERTS / TOKEN</span></div>
+              <div class="parameter-map" role="img" aria-label="Illustration: a router activates a subset of expert groups in a mixture-of-experts model.">
+                <span class="parameter-tile is-on"></span><span class="parameter-tile"></span><span class="parameter-tile"></span><span class="parameter-tile is-on"></span><span class="parameter-tile"></span><span class="parameter-tile"></span>
+                <span class="parameter-tile"></span><span class="parameter-tile is-on"></span><span class="parameter-tile"></span><span class="parameter-tile"></span><span class="parameter-tile is-on"></span><span class="parameter-tile"></span>
+              </div>
+              <p>A router activates only some experts per token: potentially more capability for less compute.</p>
+            </article>
+          </div>
+          <p class="model-caveat"><span>IMPORTANT</span> Sparse compute does not mean tiny memory needs. The model’s weights still have to be available.</p>
+        </div>
+      </section>
+
+      <section class="slide slide--hardware" id="slide-04" data-tone="sage" aria-labelledby="slide-04-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">03</span><span>KNOW THE MACHINE</span></p>
+          <h2 class="section-title" id="slide-04-title">Capacity decides if it fits.<br />Bandwidth decides how it feels.</h2>
+          <div class="hardware-grid">
+            <article class="hardware-point">
+              <div class="hardware-label"><span>01 / CAPACITY</span><span class="hardware-unit">GB</span></div>
+              <h3>RAM</h3>
+              <p>Can the model and its working context fit alongside the operating system and your other apps?</p>
+              <div class="memory-list" aria-label="Memory must cover model weights, KV cache, runtime, operating system, and other applications">
+                <span>MODEL WEIGHTS</span><b>+</b><span>KV CACHE</span><b>+</b><span>RUNTIME &amp; SYSTEM</span>
+              </div>
+            </article>
+            <article class="hardware-point">
+              <div class="hardware-label"><span>02 / THROUGHPUT</span><span class="hardware-unit">GB / s</span></div>
+              <h3>Bandwidth</h3>
+              <p>How quickly can memory feed the model while it generates the next token?</p>
+              <div class="bandwidth-lines" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
+              <p class="hardware-aside">For many single-user runs, faster memory means faster generation. Model, quantization, and runtime matter too.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide slide--context" id="slide-05" data-tone="light" aria-labelledby="slide-05-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">04</span><span>PLAN FOR CONTEXT</span></p>
+          <h2 class="section-title" id="slide-05-title">Conversation history has a memory bill.</h2>
+          <p class="section-intro">The KV cache stores information the model needs from earlier tokens. As context grows, so does the cache—and the exact cost depends on the model, precision, and workload.</p>
+          <div class="memory-equation" aria-label="Usable memory equals installed RAM minus system and apps, model weights, and runtime plus KV cache headroom.">
+            <div class="memory-term memory-term--total"><small>START WITH</small><strong>Installed<br />RAM</strong></div>
+            <span class="operator" aria-hidden="true">−</span>
+            <div class="memory-term"><small>RESERVE</small><strong>System<br />&amp; apps</strong></div>
+            <span class="operator" aria-hidden="true">−</span>
+            <div class="memory-term"><small>LOAD</small><strong>Model<br />weights</strong></div>
+            <span class="operator" aria-hidden="true">−</span>
+            <div class="memory-term"><small>LEAVE ROOM FOR</small><strong>Runtime<br />+ KV cache</strong></div>
+          </div>
+          <p class="equation-caption"><span class="caption-mark" aria-hidden="true">↳</span>What remains is your headroom. Plan for the context length you actually expect to use.</p>
+        </div>
+      </section>
+
+      <section class="slide slide--formats" id="slide-06" data-tone="light" aria-labelledby="slide-06-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">05</span><span>SERVE THE MODEL</span></p>
+          <h2 class="section-title" id="slide-06-title">Choose a format your hardware knows well.</h2>
+          <p class="section-intro">A server loads the model and makes it available to your client. The best starting point depends on the machine you own.</p>
+          <div class="format-grid">
+            <article class="format-option">
+              <div class="format-meta"><span>01 / APPLE SILICON</span><span aria-hidden="true">↗</span></div>
+              <h3>MLX</h3>
+              <p>Built for Apple silicon. A sensible first option to test on a Mac.</p>
+            </article>
+            <article class="format-option">
+              <div class="format-meta"><span>02 / CROSS-PLATFORM</span><span aria-hidden="true">↗</span></div>
+              <h3>GGUF</h3>
+              <p>A widely supported model format across local runtimes and operating systems.</p>
+            </article>
+          </div>
+          <p class="format-note"><strong>Start with defaults.</strong> Then benchmark the same model, quantization, prompt, and context on the server you plan to use. A wrapper or setting can change the result.</p>
+        </div>
+      </section>
+
+      <section class="slide slide--harness" id="slide-07" data-tone="sage" aria-labelledby="slide-07-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">06</span><span>CHOOSE THE HARNESS</span></p>
+          <h2 class="section-title" id="slide-07-title">Your client spends context before you type.</h2>
+          <p class="section-intro">System instructions and tool descriptions count as input too. VS Code-style IDEs can carry more of this overhead; lighter clients such as Pi trade some UI convenience for a leaner prompt.</p>
+          <div class="context-comparison">
+            <article class="context-lane">
+              <div class="lane-heading"><strong>HEAVIER IDE</strong><span>MORE CLIENT OVERHEAD</span></div>
+              <div class="context-bar context-bar--heavy" role="img" aria-label="Illustrative context budget with a larger client and tools portion and less room for the task.">
+                <span class="bar-client">CLIENT<br />+ TOOLS</span><span class="bar-task">YOUR TASK<br />&amp; HISTORY</span>
+              </div>
+            </article>
+            <article class="context-lane">
+              <div class="lane-heading"><strong>LEANER CLIENT</strong><span>MORE ROOM FOR THE TASK</span></div>
+              <div class="context-bar context-bar--lean" role="img" aria-label="Illustrative context budget with a smaller client portion and more room for the task.">
+                <span class="bar-client">CLIENT</span><span class="bar-task">YOUR TASK<br />&amp; HISTORY</span>
+              </div>
+            </article>
+          </div>
+          <p class="chart-note">Illustrative only — actual prompt overhead varies by tool and configuration.</p>
+          <div class="reading-links" aria-label="Further reading">
+            <span>FURTHER READING</span>
+            <a href="https://arena.ai/blog/coding-agents-harness-tax" target="_blank" rel="noopener noreferrer">The coding-agent harness tax <span aria-hidden="true">↗</span></a>
+            <a href="https://share.gemini.google/Y75pMIZ1nIKJ" target="_blank" rel="noopener noreferrer">Bionic for coding <span aria-hidden="true">↗</span></a>
+            <a href="https://github.com/github/copilot-cli/issues/2627" target="_blank" rel="noopener noreferrer">Copilot CLI discussion <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide slide--baseline" id="slide-08" data-tone="light" aria-labelledby="slide-08-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">07</span><span>MAKE A FAIR TEST</span></p>
+          <h2 class="section-title" id="slide-08-title">Find your baseline before you tune.</h2>
+          <p class="section-intro">A simple, repeatable test tells you more than a pile of configuration tweaks.</p>
+          <ol class="baseline-steps">
+            <li><span class="step-number">01</span><div><h3>Check available memory</h3><p>Leave room for the system and the context you want to run.</p></div></li>
+            <li><span class="step-number">02</span><div><h3>Pick a model that fits</h3><p>Choose a suitable size and quantization for your hardware.</p></div></li>
+            <li><span class="step-number">03</span><div><h3>Start with sensible defaults</h3><p>Use a runtime and format that suit your machine.</p></div></li>
+            <li><span class="step-number">04</span><div><h3>Test your real task</h3><p>Compare quality, speed, and context use in the client you will keep using.</p></div></li>
+          </ol>
+          <p class="baseline-footnote">Change one thing at a time. Measure the workflow—not just the model card.</p>
+        </div>
+      </section>
+
+      <section class="slide slide--closing" id="slide-09" data-tone="dark" aria-labelledby="slide-09-title">
+        <div class="slide-shell slide-content">
+          <p class="eyebrow"><span class="eyebrow-index">08</span><span>THE TAKEAWAY</span></p>
+          <h2 class="section-title" id="slide-09-title">Use the machine you own.<br />Use the cloud when it earns its place.</h2>
+          <div class="closing-grid">
+            <article>
+              <span class="closing-label">RUN IT LOCALLY</span>
+              <p>Private or offline work. Quick questions, first drafts, brainstorming, small scripts, and repeatable tasks.</p>
+            </article>
+            <article>
+              <span class="closing-label">REACH FOR AN API</span>
+              <p>Hard reasoning, demanding coding, fresh research—or when convenience matters more than setup.</p>
+            </article>
+          </div>
+          <p class="closing-line">Start with one task you repeat. Try it on the hardware you already have.</p>
+          <a class="restart-link" href="#slide-01"><span aria-hidden="true">↶</span> Back to the beginning</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="deck-footer" aria-label="Presentation controls">
+      <p class="navigation-hint"><span class="hint-wide">SCROLL OR USE</span><span class="hint-keys"><kbd>↑</kbd><kbd>↓</kbd></span><span class="hint-wide">TO NAVIGATE</span><span class="hint-narrow">SWIPE TO EXPLORE</span></p>
+      <nav class="deck-controls" aria-label="Slide navigation">
+        <button class="control-button" id="previous-slide" type="button" aria-label="Previous slide" disabled>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H5m5 5-5-5 5-5" /></svg>
+        </button>
+        <p class="slide-count" aria-live="polite"><span id="current-slide">01</span><span class="count-divider">/</span><span id="total-slides">09</span><span class="visually-hidden" id="current-title">Frontier quality on local hardware</span></p>
+        <button class="control-button" id="next-slide" type="button" aria-label="Next slide">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m-5-5 5 5-5 5" /></svg>
+        </button>
+      </nav>
+    </footer>
+  </body>
+</html>

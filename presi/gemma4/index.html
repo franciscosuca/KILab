@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontier Quality on Local Hardware</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="presentation">
+        <!-- Slide 1: Title -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h1 class="title">Frontier Quality on Local Hardware</h1>
+                <p class="subtitle">A Guide to Models, Memory, and Harnesses</p>
+            </div>
+        </section>
+
+        <!-- Slide 2: Why Local? -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h2 class="section-title">Why Local?</h2>
+                <ul class="key-points">
+                    <li><strong>Offline:</strong> Uninterrupted productivity.</li>
+                    <li><strong>Privacy:</strong> Keep your data where it belongs.</li>
+                    <li><strong>Saving $:</strong> Leverage the hardware you already own.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Slide 3: Dense vs MoE -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h2 class="section-title">Dense vs. Sparse (MoE)</h2>
+                <div class="comparison">
+                    <div class="comp-item">
+                        <h3>Dense Models</h3>
+                        <p>Fire every parameter for every token. The heavy generalists.</p>
+                    </div>
+                    <div class="comp-item">
+                        <h3>MoE (Mixture-of-Experts)</h3>
+                        <p>Activate only relevant specialists. Frontier capability at a fraction of the compute cost.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 4: Hardware - RAM -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h2 class="section-title">Hardware: Capacity</h2>
+                <p class="statement">RAM is the hard constraint. If it doesn't fit, it won't run.</p>
+                <div class="accent-box">
+                    <p>Don't forget the <strong>KV Cache</strong>: The conversation history buffer that scales with your context window.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 5: Hardware - Bandwidth -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h2 class="section-title">Hardware: Bandwidth</h2>
+                <p class="statement">Memory bandwidth (GB/s) determines your <strong>throughput</strong>.</p>
+                <p class="sub-statement">RAM is the size of the garage; bandwidth is how fast the car drives.</p>
+            </div>
+        </section>
+
+        <!-- Slide 6: Software - The Server -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h2 class="section-title">The Software Stack</h2>
+                <p class="subtitle">The Server: Serving the Model</p>
+                <ul class="key-points">
+                    <li><strong>MLX:</strong> Optimized for Apple Silicon (macOS).</li>
+                    <li><strong>GGUF:</strong> The cross-platform standard.</li>
+                </ul>
+                <p class="warning"><em>Note: Avoid Ollama if you want maximum performance.</em></p>
+            </div>
+        </section>
+
+        <!-- Slide 7: Software - The Harness -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h2 class="section-title">The Software Stack</h2>
+                <p class="subtitle">The Harness: Sending the Prompt</p>
+                <div class="comparison-grid">
+                    <div class="grid-item">
+                        <h4>Heavy IDEs</h4>
+                        <p>Inject large system prompts, consuming precious context window.</p>
+                    </div>
+                    <div class="grid-item">
+                        <h4>Lightweight Clients</h4>
+                        <p>Maximizes available context for your actual task.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Slide 8: Conclusion -->
+        <section class="slide fade-in">
+            <div class="content">
+                <h2 class="section-title">Conclusion</h2>
+                <p class="statement">Local AI is no longer "someday." It is now.</p>
+                <p class="sub-statement">Stop paying for what you can run yourself.</p>
+            </div>
+        </section>
+    </div>
+
+    <div class="controls">
+        <span class="instruction">Use Arrow Keys or Scroll to navigate</span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
