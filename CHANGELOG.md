@@ -1,3 +1,9 @@
+## [2.5.0](https://github.com/franciscosuca/KILab/compare/v2.4.0...v2.5.0) (2026-09-30)
+
+### Features
+
+* **support kyas guidance across adapters:** feat: support kyas guidance across adapters ([acd9285](https://github.com/franciscosuca/KILab/commit/acd928531d5d90e9453b7fce865a562b399d4b43))
+
 ## [2.4.0](https://github.com/franciscosuca/KILab/compare/v2.3.0...v2.4.0) (2026-09-30)
 
 ### Features
