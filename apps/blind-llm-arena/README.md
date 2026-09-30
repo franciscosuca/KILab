@@ -1,28 +1,45 @@
 # Blind LLM Arena
 
-A standalone presentation app for the two skipped hands-on parts of the KILab v3 talk: run one code challenge across models, collect an anonymous audience vote, then reveal the model identities. The reveal also makes it easy to discuss the results in the later “show the results” section.
+A local presentation app that sends one prompt to selected models, shuffles their anonymous result cards, and reveals model identities only after voting.
 
 ## Run it
 
-Open `index.html` in a modern browser. The app starts in mock mode, so the benchmark can be demonstrated without model accounts or API keys. Tailwind CSS is loaded from its CDN, so an internet connection is needed for the styled experience.
+Requirements:
 
-1. Click **Run Benchmark** and let each anonymous card finish.
-2. Ask the audience which result they prefer; the cards are shuffled on every run.
-3. Click **Reveal Identities** after the vote.
-4. Use **Run Again** to reshuffle and repeat. Toggle **Mock responses** off to use configured live endpoints.
+- Node.js 18 or newer
+- `curl`
+- Any local providers you want to use
+- GitHub Copilot CLI installed and authenticated if you want Copilot models
 
-Generated HTML can be opened in each result's **Preview** tab. Previews are isolated in sandboxed iframes; response text is displayed as text in the app.
+```bash
+cd apps/blind-llm-arena
+npm install
+npm start
+```
 
-## Configure live models
+Open <http://127.0.0.1:4173>. The app starts in mock mode. Turn **Mock responses** off to make live requests.
 
-Edit the `CONFIG` object near the start of the script in `index.html`:
+## Model discovery and registration
 
-- `mockMode`: defaults to `true`; switch it off in the UI for live calls.
-- `models`: add/remove model entries. Give each a unique `id`, display `name`, `provider`, optional provider `mark`, `protocol`, `baseUrl`, `model`, and (where needed) `apiKey`.
-- `protocol: "openai-compatible"` uses `POST <baseUrl>/chat/completions` and supports OpenAI, LM Studio, and compatible cloud API proxies.
-- `protocol: "ollama"` uses Ollama's `POST <baseUrl>/api/chat` endpoint.
-- `requestTimeoutMs` controls the per-model request timeout. Optional `headers` can supply proxy-specific headers.
+At startup and whenever **Refresh models** is selected, the server checks:
 
-The example OpenAI and proxy entries intentionally have empty keys, and the proxy URL is a placeholder. Configure every live target before switching off mock mode. Browser requests need CORS enabled on the API endpoint; Ollama users may need to configure its allowed origins. API keys placed in an HTML file are visible to anyone who can access that file. Keep the app local or use a private proxy; never publish real credentials in a client-side app.
+- LM Studio at `http://127.0.0.1:1234/v1`
+- oMLX at `http://127.0.0.1:8000/v1`
+- Ollama at `http://127.0.0.1:11434`
+- the authenticated Copilot CLI through the official `@github/copilot-sdk`
 
-Mock responses and delays are also in `CONFIG.models`. Set `mockError` on an entry to a message to demonstrate an individual provider failure while the other requests complete.
+Override local endpoints with `LMSTUDIO_BASE_URL`, `OMLX_BASE_URL`, or `OLLAMA_BASE_URL`. The UI can also register OpenAI-compatible and Ollama models manually. For safety, manual endpoints must resolve to `localhost`, `127.0.0.1`, or `::1`.
+
+Select the models to include before each run. Their assignment to Model A, Model B, and subsequent cards is cryptographically shuffled and changes between runs when possible.
+
+## Execution and artifacts
+
+Local models are prompted through `curl`. Copilot models are prompted noninteractively through the Copilot CLI, with tools denied. The server writes every completed response to a mode-`0600` file in a uniquely named operating-system temporary directory, reads that artifact for display, and deletes the directory after one hour.
+
+Generated HTML can be opened in each result's **Preview** tab. Previews use sandboxed iframes, and response source is rendered as text.
+
+## Validate
+
+```bash
+npm test
+```
