@@ -26,12 +26,12 @@
     <div class="slide-inner wide">
       <p class="kicker f">01 · Why local</p>
       <h2 class="f d1">AI is useful. So why run it yourself?</h2>
-      <ul class="rows f d2">
+      <p class="note f d2">It all began on a 10-hour flight when I tried to code offline without Copilot. That curiosity led to early experiments running Ollama on an M1 inside VS Code — and the mistakes that came with it.</p>
+      <ul class="rows f d3">
         <li><span class="k">Offline</span><span class="v">The model works on a flight, on a train, anywhere — no connection required.</span></li>
         <li><span class="k">Privacy</span><span class="v">Your data stays on your machine. Nothing leaves the room.</span></li>
         <li><span class="k">Saving $</span><span class="v">You already paid for the hardware. Stop paying again for the tokens.</span></li>
       </ul>
-      <p class="note f d3">This started as curiosity — early experiments running Ollama on an M1 inside VS Code, and the mistakes that came with it.</p>
     </div>
   </section>
 
@@ -42,10 +42,7 @@
       <h2 class="f d1">Is there still a gap?</h2>
       <p class="lede f d2">We put a local open-weight model, <span class="mono">Qwen3.8-27B-MLX-4bit</span>, up against a frontier model, <span class="mono">gpt-6-luna</span>.</p>
       <figure class="figure f d3">
-        <div class="placeholder" role="img" aria-label="Placeholder for the Artificial Analysis Intelligence Index chart. Source image not yet supplied.">
-          <span class="placeholder-tag">Figure to be supplied</span>
-          <span class="placeholder-name">aa-intelligence-index.png</span>
-        </div>
+        <img src="assets/aa-intelligence-index.png" alt="Artificial Analysis Intelligence Index chart showing closed, open-but-large, and open-weight models">
         <figcaption>Artificial Analysis Intelligence Index. Annotations mark closed models ($$$), open-but-large models ($$), and small/medium open-weight models ($). One chart illustrates the trend — it does not prove universal equivalence.</figcaption>
       </figure>
     </div>
@@ -74,6 +71,11 @@
         <li><span class="k">RAM</span><span class="v">Answers <strong>“can it fit?”</strong> Capacity decides whether the model runs at all.</span></li>
         <li><span class="k">Bandwidth</span><span class="v">Helps answer <strong>“how fast can it generate?”</strong> GB/s influences tokens per second.</span></li>
       </ul>
+      <figure class="figure f d4">
+        <img src="assets/bandwidth-comparison.jpeg" alt="Memory Bandwidth Comparison chart showing various Apple Silicon chips and server memory bandwidth">
+        <figcaption>Memory bandwidth across Apple Silicon generations and server platforms.</figcaption>
+      </figure>
+      <p class="note f d5"><strong>Finding your bandwidth.</strong> <span class="mono">Bandwidth = Bus Width (bits) × Transfer Rate (MT/s) / 8</span>. This MacBook Pro M5 uses a 256-bit LPDDR5X bus at 8533 MT/s → 256 × 8533 / 8 ≈ 273 GB/s.</p>
     </div>
   </section>
 
@@ -85,7 +87,7 @@
       <p class="body f d2">Model weights plus the <strong>KV cache</strong> must fit in memory. The KV cache holds your conversation so the model can attend to prior context — it grows with context length and depends on the architecture and cache precision.</p>
       <div class="table-wrap f d3">
         <table class="spec">
-          <caption>Indicative estimates — not guaranteed requirements.</caption>
+          <caption>MacBook Pro M5, 32 GB — what fits (≈24 GB available for models).</caption>
           <thead>
             <tr>
               <th scope="col">Model</th>
@@ -94,41 +96,37 @@
               <th scope="col">KV @32K</th>
               <th scope="col">KV @128K</th>
               <th scope="col">KV @256K</th>
-              <th scope="col">Machine RAM @128K</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <th scope="row">Qwen3.8-27B-MLX-4bit</th>
-              <td>Dense; ~48 layers / 8 KV heads</td>
+              <td>Dense; 27B parameters</td>
               <td>~14.5 GB</td>
               <td>~6 GB</td>
-              <td>~24 GB</td>
-              <td>~48 GB</td>
-              <td>64 GB recommended; 48 GB tight</td>
+              <td class="red">~24 GB</td>
+              <td class="red">~48 GB</td>
             </tr>
             <tr>
               <th scope="row">Gemma-4-26B-A4B-it-QAT-MLX-4bit</th>
-              <td>MoE; 26B total / 4B active; hybrid attention</td>
+              <td>MoE; 26B total / 4B active</td>
               <td>~14 GB</td>
               <td>~3 GB</td>
-              <td>~13 GB</td>
-              <td>~26 GB</td>
-              <td>48 GB</td>
+              <td class="red">~13 GB</td>
+              <td class="red">~26 GB</td>
             </tr>
             <tr>
               <th scope="row">Qwen3.5-9B-MLX-4bit</th>
-              <td>Dense; ~36 layers / 8 KV heads</td>
+              <td>Dense; 9B parameters</td>
               <td>~5 GB</td>
               <td>~4.5 GB</td>
               <td>~18 GB</td>
-              <td>~36 GB</td>
-              <td>32 GB tight</td>
+              <td class="red">~36 GB</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="note f d4"><strong>Assumptions:</strong> 4-bit weights ≈ 0.5 bytes/param + ~7% overhead. KV cache assumes FP16: <span class="mono">2 × layers × KV heads × head dim × 2 bytes</span> per token. Budget ~8 GB for the OS and apps. 4-bit KV cache can cut KV memory to roughly a quarter of FP16 (model/runtime dependent) — don't mix it with the FP16 figures above. All values depend on the exact architecture, runtime, context, and quantization.</p>
+      <p class="note f d4"><strong>Assumptions:</strong> 4-bit weights ≈ 0.5 bytes/param + ~7% overhead. Apple reserves ~25% of memory for the system — leaving roughly 75% available for models. This can be adjusted (e.g. via memory allocation settings), but the system may not run stably if you push it too far.</p>
     </div>
   </section>
 
@@ -138,13 +136,13 @@
       <p class="kicker f">04 · Hardware — Speed</p>
       <h2 class="f d1">Bandwidth is the speed</h2>
       <p class="lede f d2">RAM is whether the car fits in the garage.<br>Bandwidth is how quickly it travels on the highway.</p>
-      <p class="body f d3">Rule of thumb: <span class="mono">tokens/s ≈ memory bandwidth (GB/s) ÷ GB of weights read per generated token</span>. Indicative output rates at an illustrative 200 GB/s:</p>
+      <p class="body f d3">Rule of thumb: <span class="mono">tokens/s ≈ memory bandwidth (GB/s) ÷ GB of weights read per generated token</span>. Indicative output rates on a MacBook Pro M5 (~273 GB/s):</p>
       <ul class="rows f d4">
-        <li><span class="k">~15 tok/s</span><span class="v"><span class="mono">Qwen3.8-27B</span> dense.</span></li>
-        <li><span class="k">~80 tok/s</span><span class="v"><span class="mono">Gemma-4 A4B</span> MoE — only ~2.5 GB of active weights are read per token.</span></li>
-        <li><span class="k">~44 tok/s</span><span class="v"><span class="mono">Qwen3.5-9B</span> dense.</span></li>
+        <li><span class="k">~20 tok/s</span><span class="v"><span class="mono">Qwen3.8-27B</span> dense.</span></li>
+        <li><span class="k">~110 tok/s</span><span class="v"><span class="mono">Gemma-4 A4B</span> MoE — only ~2.5 GB of active weights per token.</span></li>
+        <li><span class="k">~60 tok/s</span><span class="v"><span class="mono">Qwen3.5-9B</span> dense.</span></li>
       </ul>
-      <p class="note f d5">Idealized estimates — real results are often 60–80% of these and depend on hardware, runtime, context length, and implementation. For MoE, active parameters affect per-token work, but all weights still need to fit in RAM. Input prefill is often faster than token generation; the two have different performance characteristics.</p>
+      <p class="note f d5">These are the speeds for running the models in 4-bit. Real results are often 60–80% of these and depend on hardware, runtime, context length, and implementation. Input prefill is often faster than token generation; the two have different performance characteristics.</p>
     </div>
   </section>
 
@@ -153,10 +151,29 @@
     <div class="slide-inner wide">
       <p class="kicker f">05 · Software</p>
       <h2 class="f d1">Two layers: server + harness</h2>
-      <ul class="rows f d2">
-        <li><span class="k">Server</span><span class="v">Runs the model. Turns the weights into a running engine.</span></li>
-        <li><span class="k">Harness</span><span class="v">Supplies the prompt and presents the result. Your interface to the model.</span></li>
-      </ul>
+      <div class="table-wrap f d2">
+        <table class="spec">
+          <thead>
+            <tr>
+              <th scope="col">Layer</th>
+              <th scope="col">What it does</th>
+              <th scope="col">Examples</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Server</th>
+              <td>Runs the model. Turns the weights into a running engine.</td>
+              <td>Ollama · vLLM · MLX · llama.cpp</td>
+            </tr>
+            <tr>
+              <th scope="row">Harness</th>
+              <td>Supplies the prompt and presents the result. Your interface to the model.</td>
+              <td>LM Studio · VSCode · Codex · Pi</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -169,8 +186,6 @@
         <li><span class="k">MLX</span><span class="v">Optimized for Apple Silicon. Best performance on a Mac.</span></li>
         <li><span class="k">GGUF</span><span class="v">Cross-platform. Runs everywhere — not always as optimized on Mac.</span></li>
       </ul>
-      <p class="body f d3"><strong>Rule of thumb:</strong> start with the defaults. The source notes suggest avoiding Ollama here — some server setups add overhead or apply less optimized defaults, which can cost generation speed on the same hardware.</p>
-      <p class="note f d4">[ benchmark link to come ]</p>
     </div>
   </section>
 
@@ -184,10 +199,7 @@
         <li><span class="k">Lighter clients</span><span class="v">(e.g. Pi) leave more of the context window for your actual prompt.</span></li>
       </ul>
       <figure class="figure f d3">
-        <div class="placeholder" role="img" aria-label="Placeholder for the arena.ai SWE-bench Lite cost-scaling chart replay. Source GIF not yet supplied.">
-          <span class="placeholder-tag">Figure to be supplied</span>
-          <span class="placeholder-name">arena-harness-tax.gif</span>
-        </div>
+        <video src="assets/arena-harness-tax.mov" autoplay loop muted playsinline alt="arena.ai SWE-bench Lite cost-scaling replay"></video>
         <figcaption>arena.ai SWE-bench Lite cost-scaling replay. Read more: <a href="https://arena.ai/blog/coding-agents-harness-tax">Coding Agents &amp; the Harness Tax — arena.ai</a></figcaption>
       </figure>
     </div>
