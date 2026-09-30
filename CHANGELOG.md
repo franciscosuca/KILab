@@ -1,3 +1,9 @@
+## [2.4.0](https://github.com/franciscosuca/KILab/compare/v2.3.0...v2.4.0) (2026-09-30)
+
+### Features
+
+* **add standalone Blind LLM Arena app:** feat: add standalone Blind LLM Arena app ([df40874](https://github.com/franciscosuca/KILab/commit/df40874827487bdb07d8c587074774f821c81e80))
+
 ## [2.3.0](https://github.com/franciscosuca/KILab/compare/v2.2.0...v2.3.0) (2026-09-30)
 
 ### Features
