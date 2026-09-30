@@ -14,6 +14,7 @@ const MAX_BODY_BYTES = 1024 * 1024;
 const MAX_OUTPUT_BYTES = 10 * 1024 * 1024;
 
 const registry = new Map();
+const manualRegistry = new Map();
 const artifacts = new Map();
 
 const localProviders = [
@@ -142,10 +143,11 @@ function publicModel(model) {
   return { id, name, provider, protocol, model: modelId, mark, baseUrl };
 }
 
-function registerModel(model) {
+function registerModel(model, { manual = false } = {}) {
   const id = `${model.protocol}:${model.provider}:${model.model}`;
   const registered = { ...model, id };
   registry.set(id, registered);
+  if (manual) manualRegistry.set(id, registered);
   return publicModel(registered);
 }
 
@@ -229,6 +231,13 @@ export async function discoverModels() {
       error: result.reason?.message || "Discovery failed",
     };
   });
+  for (const model of manualRegistry.values()) {
+    registry.set(model.id, model);
+    if (!models.some(({ id }) => id === model.id)) models.push(publicModel(model));
+  }
+  if (manualRegistry.size) {
+    providers.push({ provider: "Manually registered", available: true, count: manualRegistry.size });
+  }
   return { models, providers };
 }
 
@@ -273,19 +282,30 @@ function safeFilename(value) {
 
 async function executeModel(model, prompt) {
   const runDir = await mkdtemp(join(tmpdir(), "kilab-arena-"));
-  const outputPath = join(runDir, `${safeFilename(model.model)}.txt`);
-  const text = model.protocol === "copilot-cli"
-    ? await runCopilotModel(model, prompt, outputPath)
-    : await runLocalModel(model, prompt);
-  await writeFile(outputPath, text, { encoding: "utf8", mode: 0o600 });
-  const saved = await readFile(outputPath, "utf8");
-  const token = basename(runDir);
-  artifacts.set(token, runDir);
-  setTimeout(() => {
-    artifacts.delete(token);
-    rm(runDir, { recursive: true, force: true });
-  }, 60 * 60 * 1000).unref();
-  return { text: saved, artifact: `/api/artifacts/${encodeURIComponent(token)}/${encodeURIComponent(basename(outputPath))}` };
+  try {
+    const outputPath = join(runDir, `${safeFilename(model.model)}.txt`);
+    const text = model.protocol === "copilot-cli"
+      ? await runCopilotModel(model, prompt, outputPath)
+      : await runLocalModel(model, prompt);
+    await writeFile(outputPath, text, { encoding: "utf8", mode: 0o600 });
+    const saved = await readFile(outputPath, "utf8");
+    const token = basename(runDir);
+    artifacts.set(token, runDir);
+    setTimeout(() => {
+      artifacts.delete(token);
+      void rm(runDir, { recursive: true, force: true });
+    }, 60 * 60 * 1000).unref();
+    return { text: saved, artifact: `/api/artifacts/${encodeURIComponent(token)}/${encodeURIComponent(basename(outputPath))}` };
+  } catch (error) {
+    await rm(runDir, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+async function cleanupArtifacts() {
+  const directories = [...artifacts.values()];
+  artifacts.clear();
+  await Promise.allSettled(directories.map((directory) => rm(directory, { recursive: true, force: true })));
 }
 
 async function readJsonBody(request) {
@@ -366,7 +386,7 @@ export async function handleRequest(request, response) {
         model: body.model.trim().slice(0, 200),
         baseUrl,
         mark: String(body.mark || body.provider || "L").trim().slice(0, 1).toUpperCase(),
-      });
+      }, { manual: true });
       sendJson(response, 201, { model });
       return;
     }
@@ -409,9 +429,13 @@ export async function handleRequest(request, response) {
 }
 
 export function startServer(port = PORT) {
-  return createServer((request, response) => {
+  const server = createServer((request, response) => {
     handleRequest(request, response);
-  }).listen(port, "127.0.0.1");
+  });
+  server.on("close", () => {
+    void cleanupArtifacts();
+  });
+  return server.listen(port, "127.0.0.1");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

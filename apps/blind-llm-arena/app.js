@@ -91,6 +91,13 @@ function makeCard(letter) {
 }
 
 function setupCards() {
+  state.hasRun = false;
+  state.revealed = false;
+  state.assignments = [];
+  elements.reveal.disabled = true;
+  elements.revealLabel.textContent = "Reveal Identities";
+  elements.reveal.setAttribute("aria-pressed", "false");
+  elements.revealBanner.hidden = true;
   elements.grid.replaceChildren();
   state.cards.clear();
   activeModels().forEach((_, index) => {

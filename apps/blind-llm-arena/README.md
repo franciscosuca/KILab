@@ -6,7 +6,7 @@ A local presentation app that sends one prompt to selected models, shuffles thei
 
 Requirements:
 
-- Node.js 18 or newer
+- Node.js 20.19 or newer (22.12+ for Node 22)
 - `curl`
 - Any local providers you want to use
 - GitHub Copilot CLI installed and authenticated if you want Copilot models
