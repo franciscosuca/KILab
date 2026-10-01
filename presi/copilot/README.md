@@ -1,14 +1,15 @@
 # Frontier Quality on Local Hardware — `presi/copilot/`
 
-A 12-slide, self-contained HTML/CSS/JS slide deck built to the specification in
+A 13-slide, self-contained HTML/CSS/JS slide deck built to the specification in
 [`prompt.md`](../../prompt.md) (the narrative and generation spec distilled from
 `BLOGS/Local LLM.md`, v3 / v3.1). It matches the restrained editorial feel of
 [`../kimik3/`](../kimik3/).
 
 ## Run
 
-Open `index.html` directly in a browser — it works from `file://` with no server
-and no network connection. No external libraries, fonts, CDNs, or remote images.
+Open `index.html` directly in a browser — it works from `file://` with no server.
+The opening video is embedded from YouTube and requires an internet connection;
+the rest of the deck uses local assets. No external libraries, fonts, or CDNs.
 
 You can also serve the folder with any static file server:
 
@@ -29,17 +30,18 @@ Then visit `http://localhost:8000`.
 ## Slides
 
 1. Cover — *Frontier Quality on Local Hardware*
-2. Why local? — offline, privacy, saving money
-3. Is there still a gap? — `Qwen3.8-27B-MLX-4bit` vs `gpt-6-luna` (AA index figure)
-4. Dense vs. sparse (MoE)
-5. The two hardware numbers — RAM and bandwidth
-6. RAM is the hard constraint — weights + KV cache (estimates table)
-7. Bandwidth is the speed — garage/highway analogy (output-rate estimates)
-8. The software stack — server + harness
-9. Choose a server — MLX vs GGUF
-10. The harness tax — VS Code vs Pi (arena.ai figure + link)
-11. An honest take
-12. Closing — "…stop paying for what you can run yourself."
+2. Opening video — first 1:15 of the linked YouTube video
+3. Why local? — offline, privacy, saving money
+4. Is there still a gap? — `Qwen3.8-27B-MLX-4bit` vs `gpt-6-luna` (AA index figure)
+5. Dense vs. sparse (MoE)
+6. The two hardware numbers — RAM and bandwidth
+7. RAM is the hard constraint — weights + KV cache (estimates table)
+8. Bandwidth is the speed — garage/highway analogy (output-rate estimates)
+9. The software stack — server + harness
+10. Choose a server — MLX vs GGUF
+11. The harness tax — VS Code vs Pi (arena.ai figure + link)
+12. An honest take
+13. Closing — "…stop paying for what you can run yourself."
 
 ## Missing source media
 
