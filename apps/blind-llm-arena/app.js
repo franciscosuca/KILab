@@ -16,7 +16,7 @@ const state = {
   hasRun: false,
   revealed: false,
   models: [...DEMO_MODELS],
-  selectedIds: new Set(DEMO_MODELS.map(({ id }) => id)),
+  selectedIds: new Set(),
   assignments: [],
   previousSignature: "",
   cards: new Map(),
@@ -32,8 +32,25 @@ const elements = {
   modelFormStatus: $("#model-form-status"),
 };
 
+function isAutoModel(model) {
+  const values = [model?.name, model?.id, model?.model];
+  return values.some((value) => {
+    const text = String(value || "").trim().toLowerCase();
+    return text === "auto" || text.split(/[:/]/).pop() === "auto";
+  });
+}
+
+function selectableModels(models) {
+  return models.filter((model) => !isAutoModel(model));
+}
+
 function activeModels() {
   return state.models.filter(({ id }) => state.selectedIds.has(id));
+}
+
+function retainSelection(models) {
+  const available = new Set(models.map(({ id }) => id));
+  state.selectedIds = new Set([...state.selectedIds].filter((id) => available.has(id)));
 }
 
 function renderModelPicker() {
@@ -174,17 +191,19 @@ async function discoverModels() {
     const response = await fetch("/api/models");
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+    const models = selectableModels(payload.models);
     if (payload.models.length) {
-      state.models = payload.models;
-      state.selectedIds = new Set(payload.models.map(({ id }) => id));
+      state.models = models;
+      retainSelection(models);
       setupCards();
       renderModelPicker();
     }
     const up = payload.providers.filter(({ available }) => available).map(({ provider }) => provider);
-    const down = payload.providers.filter(({ available }) => !available).map(({ provider }) => provider);
+    const down = payload.providers.filter(({ available }) => !available)
+      .map(({ provider, error }) => `${provider}${error ? ` (${error})` : ""}`);
     elements.discoveryStatus.textContent = up.length
-      ? `${payload.models.length} models found · ${up.join(", ")}${down.length ? ` · unavailable: ${down.join(", ")}` : ""}`
-      : "No runtimes found. Start a provider or register a loopback endpoint below.";
+      ? `${models.length} models found · ${up.join(", ")}${down.length ? ` · unavailable: ${down.join("; ")}` : ""}`
+      : `No runtimes found${down.length ? ` · ${down.join("; ")}` : ""}. Start a provider or register a loopback endpoint below.`;
   } catch (error) {
     elements.discoveryStatus.textContent = `Discovery unavailable (${error.message}). Mock models remain available.`;
   } finally {
