@@ -6,43 +6,452 @@ PACK_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd)
 CATALOG="$PACK_ROOT/catalog"
 CORE_AGENTS="$CATALOG/core/agents"
 CORE_SKILLS="$CATALOG/core/skills"
+PI_ADAPTER="$CATALOG/adapters/pi"
+PI_CONFIG="$SCRIPT_DIR/pi-config.py"
 
 TARGET="$PWD"
 HARNESS=""
 SCOPE=""
 AGENTS_SPEC=""
 SKILLS_SPEC=""
+EXTENSIONS_SPEC=""
+MODELS_SPEC=""
 AGENTS_SET=0
 SKILLS_SET=0
+EXTENSIONS_SET=0
+MODELS_SET=0
 DRY_RUN=0
 LIST_ONLY=0
+INTERACTIVE=0
+ARG_COUNT=$#
+ANSWER=""
 
 usage() {
   cat <<'EOF'
 Usage:
+  install-pack.sh
   install-pack.sh --harness <copilot|claude|pi> [options]
 
+Run without arguments in a terminal to answer an interactive questionnaire.
+
 Options:
+  -i, --interactive                Ask for every choice; given options become the defaults
   --target <path>                 Project directory (default: current directory)
   --harness <name>                Harness to install: copilot, claude, or pi
   --scope <project|global>         Installation scope; prompts when omitted
   --agents <all|a,b,c|none>        Agents to install (default: all if no selector is given)
   --skills <all|a,b,c|none>        Skills to install (default: all if no selector is given)
   --all                            Install all available agents and skills
-  --list                           List available agents and skills, then exit
+  --extensions <all|a,b,c|none>    Pi only: extensions to install (default: bundled extension files)
+  --models <all|a,b|none>          Pi only: local model providers to add to models.json (default: none)
+  --list                           List agents, skills, Pi extensions, and Pi models, then exit
   --dry-run                        Show changes without writing files
   -h, --help                       Show this help
 
 Examples:
+  install-pack.sh
   install-pack.sh --harness copilot --agents all --skills all
   install-pack.sh --harness copilot --agents test-oracle,vitest --skills feature-planning
   install-pack.sh --harness pi --scope global --skills feature-planning
+  install-pack.sh --harness pi --scope global --all --extensions all --models lmstudio,omlx
 EOF
 }
 
 die() {
   printf 'error: %s\n' "$*" >&2
   exit 1
+}
+
+runtime_name() {
+  local name=$1
+  case "$name" in
+    *-copilot) [ "$HARNESS" = "copilot" ] || return 1; printf '%s' "${name%-copilot}" ;;
+    *-claude) [ "$HARNESS" = "claude" ] || return 1; printf '%s' "${name%-claude}" ;;
+    *-pi) [ "$HARNESS" = "pi" ] || return 1; printf '%s' "${name%-pi}" ;;
+    *)
+      case "$name" in
+        *-copilot|*-claude|*-pi) return 1 ;;
+        *) printf '%s' "$name" ;;
+      esac
+      ;;
+  esac
+}
+
+in_list() {
+  case "
+$2
+" in
+    *"
+$1
+"*) return 0 ;;
+  esac
+  return 1
+}
+
+have_python() {
+  python3 -c 'import sys; sys.exit(sys.version_info < (3, 7))' >/dev/null 2>&1
+}
+
+available_agents() {
+  local file runtime
+  for file in "$CORE_AGENTS"/*.md; do
+    [ -f "$file" ] || continue
+    runtime=$(runtime_name "$(basename "$file" .md)") || continue
+    printf '%s\n' "$runtime"
+  done
+}
+
+available_skills() {
+  local file runtime
+  for file in "$CORE_SKILLS"/*; do
+    [ -d "$file" ] || continue
+    runtime=$(runtime_name "$(basename "$file")") || continue
+    printf '%s\n' "$runtime"
+  done
+}
+
+# Bundled Pi extensions: *.ts and *.js files or extension directories.
+pi_extension_files() {
+  local file
+  for file in "$PI_ADAPTER/extensions"/*; do
+    if [ -d "$file" ]; then
+      printf '%s\n' "$file"
+    else
+      case "$file" in
+        *.ts|*.js) if [ -f "$file" ]; then printf '%s\n' "$file"; fi ;;
+      esac
+    fi
+  done
+}
+
+pi_extension_name() {
+  local name
+  name=$(basename "$1")
+  case "$name" in
+    *.ts|*.js) name=${name%.*} ;;
+  esac
+  printf '%s' "$name"
+}
+
+# Pi packages from packages.txt: one "name source" pair per line.
+pi_packages() {
+  local name source rest
+  [ -f "$PI_ADAPTER/packages.txt" ] || return 0
+  while read -r name source rest || [ -n "$name" ]; do
+    case "$name" in ''|\#*) continue ;; esac
+    if [ -n "$source" ]; then printf '%s %s\n' "$name" "$source"; fi
+  done < "$PI_ADAPTER/packages.txt"
+}
+
+# pi_extension_menu [bundled]: extension names with descriptions; "bundled" omits Pi packages.
+pi_extension_menu() {
+  local file name source
+  while IFS= read -r file; do
+    printf '%s (bundled extension: %s)\n' "$(pi_extension_name "$file")" "$(basename "$file")"
+  done < <(pi_extension_files)
+  if [ "${1:-}" = "bundled" ]; then
+    return 0
+  fi
+  while read -r name source; do
+    printf '%s (Pi package: %s)\n' "$name" "$source"
+  done < <(pi_packages)
+}
+
+pi_packages_selected() {
+  local name source
+  while read -r name source; do
+    case ",$EXTENSIONS_SPEC," in
+      ,all,|*",$name,"*) return 0 ;;
+    esac
+  done < <(pi_packages)
+  return 1
+}
+
+default_extensions() {
+  local file names=""
+  while IFS= read -r file; do
+    names="${names:+$names,}$(pi_extension_name "$file")"
+  done < <(pi_extension_files)
+  printf '%s' "${names:-none}"
+}
+
+# Catalog models, one "provider<TAB>baseUrl<TAB>model id" line each (requires python3).
+pi_models() {
+  python3 "$PI_CONFIG" list-models "$PI_ADAPTER/models.json"
+}
+
+pi_model_providers() {
+  pi_models | awk -F '\t' '!seen[$1]++ { print $1 }'
+}
+
+pi_model_menu() {
+  pi_models | awk -F '\t' '
+    !($1 in count) { order[++n] = $1; url[$1] = $2 }
+    { count[$1]++ }
+    END { for (i = 1; i <= n; i++) printf "%s (%d models at %s)\n", order[i], count[order[i]], url[order[i]] }
+  '
+}
+
+# print_pi_models <all|provider,...>: catalog model IDs grouped by provider.
+print_pi_models() {
+  pi_models | awk -F '\t' -v spec=",$1," '
+    spec != ",all," && index(spec, "," $1 ",") == 0 { next }
+    $1 != last { printf "%s (%s)\n", $1, $2; last = $1 }
+    { printf "  %s\n", $3 }
+  '
+}
+
+print_models_warning() {
+  printf 'WARNING: The installer only adds model IDs to models.json; it does not download models.\n'
+  printf '         Download each model manually in LM Studio (Discover tab or "lms get") or oMLX\n'
+  printf '         (model downloader in the /admin dashboard) before selecting it in Pi.\n'
+}
+
+normalize_spec() {
+  local spec
+  spec=$(printf '%s' "$1" | tr -d '[:space:]')
+  printf '%s' "${spec:-none}"
+}
+
+# check_spec <option> <spec> <available names>: rejects unknown names before anything is written.
+check_spec() {
+  local option=$1 spec=$2 names=$3 item count=0
+  case "$spec" in all|none) return 0 ;; esac
+  while IFS= read -r item; do
+    [ -n "$item" ] || continue
+    count=$((count + 1))
+    in_list "$item" "$names" \
+      || die "unknown $option value: $item (available: $(printf '%s' "$names" | tr '\n' ',' | sed 's/,/, /g'))"
+  done <<EOF
+$(printf '%s\n' "$spec" | tr ',' '\n')
+EOF
+  [ "$count" -gt 0 ] || die "$option requires all, none, or a comma-separated list"
+}
+
+ask() {
+  printf '%s' "$1"
+  if ! read -r ANSWER; then
+    printf '\n'
+    die "installation cancelled"
+  fi
+}
+
+print_menu() {
+  local line index=0
+  while IFS= read -r line; do
+    index=$((index + 1))
+    printf '  %2d) %s\n' "$index" "$line"
+  done <<EOF
+$1
+EOF
+}
+
+# menu_value <options> <answer>: prints the option name chosen by number or name.
+menu_value() {
+  local line index=0
+  while IFS= read -r line; do
+    index=$((index + 1))
+    if [ "$2" = "$index" ] || [ "$2" = "${line%% *}" ]; then
+      printf '%s' "${line%% *}"
+      return 0
+    fi
+  done <<EOF
+$1
+EOF
+  return 1
+}
+
+# choose_one <question> <options> [default]: sets ANSWER to one option name.
+choose_one() {
+  local options=$2 default=${3:-} value
+  printf '\n%s\n' "$1"
+  print_menu "$options"
+  while :; do
+    if [ -n "$default" ]; then ask "Choose [$default]: "; else ask "Choose: "; fi
+    [ -n "$ANSWER" ] || ANSWER=$default
+    if value=$(menu_value "$options" "$ANSWER"); then
+      ANSWER=$value
+      return 0
+    fi
+    printf 'Please enter a number or a name from the list.\n'
+  done
+}
+
+# choose_many <question> <options> <default>: sets ANSWER to all, none, or a comma-separated list.
+choose_many() {
+  local options=$2 default=$3 token value result invalid
+  printf '\n%s\n' "$1"
+  print_menu "$options"
+  printf '  Enter numbers or names separated by commas or spaces, "all", or "none".\n'
+  while :; do
+    ask "Select [$default]: "
+    [ -n "$ANSWER" ] || ANSWER=$default
+    value=$(printf '%s' "$ANSWER" | tr '[:upper:]' '[:lower:]')
+    case "$value" in
+      all|none) ANSWER=$value; return 0 ;;
+    esac
+    result=""
+    invalid=""
+    while IFS= read -r token; do
+      [ -n "$token" ] || continue
+      if value=$(menu_value "$options" "$token"); then
+        case ",$result," in
+          *",$value,"*) ;;
+          *) result="${result:+$result,}$value" ;;
+        esac
+      else
+        invalid="${invalid:+$invalid, }$token"
+      fi
+    done <<EOF
+$(printf '%s\n' "$ANSWER" | tr ', \t' '\n\n\n')
+EOF
+    if [ -z "$invalid" ] && [ -n "$result" ]; then
+      ANSWER=$result
+      return 0
+    fi
+    printf 'Unknown choice: %s\n' "${invalid:-$ANSWER}"
+  done
+}
+
+confirm() {
+  while :; do
+    ask "$1 [Y/n] "
+    case "$ANSWER" in
+      ''|y|Y|yes|Yes|YES) return 0 ;;
+      n|N|no|No|NO) return 1 ;;
+    esac
+  done
+}
+
+ask_target() {
+  local path resolved
+  while :; do
+    ask "Project directory [$TARGET]: "
+    path=${ANSWER:-$TARGET}
+    case "$path" in
+      \~) path=$HOME ;;
+      \~/*) path="$HOME/${path#\~/}" ;;
+    esac
+    if resolved=$(CDPATH='' cd -- "$path" 2>/dev/null && pwd); then
+      TARGET=$resolved
+      return 0
+    fi
+    printf 'Directory not found: %s\n' "$path"
+  done
+}
+
+run_questionnaire() {
+  local options default
+  printf 'Coding agent pack installer. Press Enter to accept the [default] answer.\n'
+
+  choose_one "Which harness do you want to install for?" "copilot (GitHub Copilot)
+claude (Claude Code)
+pi (Pi coding agent)" "$HARNESS"
+  HARNESS=$ANSWER
+
+  if [ "$HARNESS" = "copilot" ]; then
+    SCOPE=project
+    printf '\nCopilot resources are project-scoped and are installed under <project>/.github.\n'
+  else
+    choose_one "Where do you want to install the $HARNESS resources?" "project (this project only)
+global (all projects of your user)" "${SCOPE:-project}"
+    SCOPE=$ANSWER
+  fi
+  if [ "$SCOPE" = "project" ]; then
+    printf '\n'
+    ask_target
+  fi
+
+  options=$(available_agents)
+  if [ -n "$options" ]; then
+    choose_many "Which agents do you want to install?" "$options" "$AGENTS_SPEC"
+    AGENTS_SPEC=$ANSWER
+  fi
+  options=$(available_skills)
+  if [ -n "$options" ]; then
+    choose_many "Which skills do you want to install?" "$options" "$SKILLS_SPEC"
+    SKILLS_SPEC=$ANSWER
+  fi
+
+  if [ "$HARNESS" != "pi" ]; then
+    EXTENSIONS_SET=0
+    MODELS_SET=0
+    return 0
+  fi
+
+  if have_python; then
+    options=$(pi_extension_menu)
+    printf '\nPi packages are third-party code that Pi downloads and runs on its next start.\n'
+  else
+    options=$(pi_extension_menu bundled)
+    printf '\nSkipping Pi packages: python3 3.7 or newer is required to add them to settings.json.\n'
+  fi
+  EXTENSIONS_SPEC=$(normalize_spec "$EXTENSIONS_SPEC")
+  if [ -n "$options" ]; then
+    default=$EXTENSIONS_SPEC
+    [ "$EXTENSIONS_SET" -eq 1 ] || default=$(default_extensions)
+    choose_many "Which Pi extensions do you want to install?" "$options" "$default"
+    EXTENSIONS_SPEC=$ANSWER
+    if [ "$EXTENSIONS_SPEC" = "all" ] && ! have_python; then
+      EXTENSIONS_SPEC=$(default_extensions)
+    fi
+  fi
+  EXTENSIONS_SET=1
+
+  if have_python; then
+    printf '\nLocal models for Pi (catalog/adapters/pi/models.json):\n'
+    print_pi_models all | sed 's/^/  /'
+    printf '\n'
+    print_models_warning
+    default=$MODELS_SPEC
+    [ "$MODELS_SET" -eq 1 ] || default=all
+    choose_many "Which model providers do you want to add to Pi's models.json?" "$(pi_model_menu)" "$(normalize_spec "$default")"
+    MODELS_SPEC=$ANSWER
+  else
+    printf '\nSkipping Pi models: python3 3.7 or newer is required to update models.json.\n'
+    MODELS_SPEC=none
+  fi
+  MODELS_SET=1
+}
+
+shell_quote() {
+  case "$1" in
+    ''|*[!A-Za-z0-9_,./:=@%+-]*) printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+equivalent_command() {
+  local command
+  command="$(shell_quote "$SCRIPT_DIR/install-pack.sh") --harness $HARNESS --scope $SCOPE"
+  if [ "$SCOPE" = "project" ]; then
+    command="$command --target $(shell_quote "$TARGET")"
+  fi
+  command="$command --agents $(shell_quote "$AGENTS_SPEC") --skills $(shell_quote "$SKILLS_SPEC")"
+  if [ "$HARNESS" = "pi" ]; then
+    command="$command --extensions $(shell_quote "$EXTENSIONS_SPEC") --models $(shell_quote "$MODELS_SPEC")"
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    command="$command --dry-run"
+  fi
+  printf '%s' "$command"
+}
+
+print_summary() {
+  printf '\nSummary:\n'
+  printf '  Harness:     %s\n' "$HARNESS"
+  printf '  Scope:       %s\n' "$SCOPE"
+  printf '  Destination: %s\n' "$DEST"
+  printf '  Agents:      %s\n' "$AGENTS_SPEC"
+  printf '  Skills:      %s\n' "$SKILLS_SPEC"
+  if [ "$HARNESS" = "pi" ]; then
+    printf '  Extensions:  %s\n' "$EXTENSIONS_SPEC"
+    printf '  Models:      %s\n' "$MODELS_SPEC"
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '  Dry run:     no files are written\n'
+  fi
+  printf '\nEquivalent one-time command:\n  %s\n\n' "$(equivalent_command)"
 }
 
 while [ "$#" -gt 0 ]; do
@@ -81,6 +490,22 @@ while [ "$#" -gt 0 ]; do
       SKILLS_SET=1
       shift
       ;;
+    --extensions)
+      [ "$#" -ge 2 ] || die "--extensions requires a selector"
+      EXTENSIONS_SPEC=$2
+      EXTENSIONS_SET=1
+      shift 2
+      ;;
+    --models)
+      [ "$#" -ge 2 ] || die "--models requires a selector"
+      MODELS_SPEC=$2
+      MODELS_SET=1
+      shift 2
+      ;;
+    -i|--interactive)
+      INTERACTIVE=1
+      shift
+      ;;
     --list)
       LIST_ONLY=1
       shift
@@ -108,10 +533,45 @@ if [ "$LIST_ONLY" -eq 1 ]; then
   printf '\nSkills:\n'
   find "$CORE_SKILLS" -mindepth 1 -maxdepth 1 -type d -print \
     | sed "s#^$CORE_SKILLS/##" | sort
+  printf '\nPi extensions (--extensions):\n'
+  pi_extension_menu
+  printf '\nPi models (--models; download them manually before use):\n'
+  if have_python; then
+    print_pi_models all
+  else
+    printf 'python3 3.7 or newer is required to list models.\n'
+  fi
   exit 0
 fi
 
-[ -n "$HARNESS" ] || die "--harness is required"
+if [ "$INTERACTIVE" -eq 0 ] && [ "$ARG_COUNT" -eq 0 ] && [ -t 0 ]; then
+  INTERACTIVE=1
+fi
+if [ "$INTERACTIVE" -eq 1 ]; then
+  [ -t 0 ] || die "--interactive requires a terminal; pass --harness and the other options instead"
+  case "$HARNESS" in
+    ''|copilot|claude|pi) ;;
+    *) die "unsupported harness: $HARNESS" ;;
+  esac
+  case "$SCOPE" in
+    ''|project|global) ;;
+    *) die "scope must be project or global" ;;
+  esac
+  if [ "$AGENTS_SET" -eq 0 ]; then
+    if [ "$SKILLS_SET" -eq 1 ]; then AGENTS_SPEC=none; else AGENTS_SPEC=all; fi
+  fi
+  if [ "$SKILLS_SET" -eq 0 ]; then
+    if [ "$AGENTS_SET" -eq 1 ]; then SKILLS_SPEC=none; else SKILLS_SPEC=all; fi
+  fi
+  AGENTS_SPEC=$(normalize_spec "$AGENTS_SPEC")
+  SKILLS_SPEC=$(normalize_spec "$SKILLS_SPEC")
+  TARGET=$(cd -- "$TARGET" 2>/dev/null && pwd) || die "target directory does not exist: $TARGET"
+  run_questionnaire
+  AGENTS_SET=1
+  SKILLS_SET=1
+fi
+
+[ -n "$HARNESS" ] || die "--harness is required; run without arguments (or with --interactive) in a terminal to be asked instead"
 case "$HARNESS" in
   copilot|claude|pi) ;;
   *) die "unsupported harness: $HARNESS" ;;
@@ -128,6 +588,22 @@ fi
 
 case "$AGENTS_SPEC" in "" ) AGENTS_SPEC=none ;; esac
 case "$SKILLS_SPEC" in "" ) SKILLS_SPEC=none ;; esac
+
+if [ "$HARNESS" = "pi" ]; then
+  [ "$EXTENSIONS_SET" -eq 1 ] || EXTENSIONS_SPEC=$(default_extensions)
+  EXTENSIONS_SPEC=$(normalize_spec "$EXTENSIONS_SPEC")
+  MODELS_SPEC=$(normalize_spec "$MODELS_SPEC")
+  check_spec --extensions "$EXTENSIONS_SPEC" "$(pi_extension_menu | sed 's/ .*//')"
+  if [ "$MODELS_SPEC" != "none" ] || pi_packages_selected; then
+    have_python || die "python3 3.7 or newer is required to install Pi packages and models"
+  fi
+  if [ "$MODELS_SPEC" != "none" ]; then
+    check_spec --models "$MODELS_SPEC" "$(pi_model_providers)"
+  fi
+else
+  [ "$EXTENSIONS_SET" -eq 0 ] || die "--extensions is only supported with --harness pi"
+  [ "$MODELS_SET" -eq 0 ] || die "--models is only supported with --harness pi"
+fi
 
 TARGET=$(cd -- "$TARGET" 2>/dev/null && pwd) || die "target directory does not exist: $TARGET"
 
@@ -167,6 +643,11 @@ case "$HARNESS:$SCOPE" in
   *) die "unsupported harness/scope combination" ;;
 esac
 
+if [ "$INTERACTIVE" -eq 1 ]; then
+  print_summary
+  confirm "Proceed?" || die "installation cancelled"
+fi
+
 log() {
   printf '%s\n' "$*"
 }
@@ -191,21 +672,6 @@ copy_tree() {
   mkdir -p "$destination"
   cp -pR "$source/." "$destination/"
   log "installed ${destination#$TARGET/}"
-}
-
-runtime_name() {
-  local name=$1
-  case "$name" in
-    *-copilot) [ "$HARNESS" = "copilot" ] || return 1; printf '%s' "${name%-copilot}" ;;
-    *-claude) [ "$HARNESS" = "claude" ] || return 1; printf '%s' "${name%-claude}" ;;
-    *-pi) [ "$HARNESS" = "pi" ] || return 1; printf '%s' "${name%-pi}" ;;
-    *)
-      case "$name" in
-        *-copilot|*-claude|*-pi) return 1 ;;
-        *) printf '%s' "$name" ;;
-      esac
-      ;;
-  esac
 }
 
 selected() {
@@ -408,10 +874,52 @@ install_claude() {
   fi
 }
 
+run_pi_config() {
+  local command=$1
+  shift
+  if [ "$DRY_RUN" -eq 1 ]; then
+    set -- --dry-run "$@"
+  fi
+  python3 "$PI_CONFIG" "$command" "$@"
+}
+
+install_pi_extensions() {
+  local file name source
+  while IFS= read -r file; do
+    selected "$(pi_extension_name "$file")" "$EXTENSIONS_SPEC" || continue
+    if [ -d "$file" ]; then
+      copy_tree "$file" "$DEST/extensions/$(basename "$file")"
+    else
+      copy_file "$file" "$DEST/extensions/$(basename "$file")"
+    fi
+  done < <(pi_extension_files)
+  set --
+  while read -r name source; do
+    selected "$name" "$EXTENSIONS_SPEC" || continue
+    set -- ${1+"$@"} "$source"
+  done < <(pi_packages)
+  if [ "$#" -gt 0 ]; then
+    run_pi_config add-packages --label "${DEST#"$TARGET"/}/settings.json" "$DEST/settings.json" "$@" \
+      || die "could not update $DEST/settings.json"
+  fi
+}
+
+install_pi_models() {
+  local provider
+  [ "$MODELS_SPEC" != "none" ] || return 0
+  set --
+  while IFS= read -r provider; do
+    selected "$provider" "$MODELS_SPEC" || continue
+    set -- ${1+"$@"} "$provider"
+  done < <(pi_model_providers)
+  run_pi_config merge-models --label "${DEST#"$TARGET"/}/models.json" \
+    "$PI_ADAPTER/models.json" "$DEST/models.json" "$@" || die "could not update $DEST/models.json"
+}
+
 install_pi() {
   local file name runtime child child_name
   copy_file "$CATALOG/adapters/pi/APPEND_SYSTEM.md" "$DEST/APPEND_SYSTEM.md"
-  copy_file "$CATALOG/adapters/pi/extensions/local-models.ts" "$DEST/extensions/local-models.ts"
+  install_pi_extensions
   if [ "$AGENTS_SPEC" != "none" ]; then
     for file in "$CORE_AGENTS"/*.md; do
       [ -f "$file" ] || continue
@@ -438,6 +946,7 @@ install_pi() {
       fi
     done
   fi
+  install_pi_models
 }
 
 case "$HARNESS" in
@@ -447,3 +956,15 @@ case "$HARNESS" in
 esac
 
 log "completed $HARNESS installation at $DEST"
+
+if [ "$HARNESS" = "pi" ] && [ "$MODELS_SPEC" != "none" ]; then
+  printf '\n'
+  print_models_warning
+  printf '\nSelected models for %s/models.json:\n' "$DEST"
+  print_pi_models "$MODELS_SPEC"
+  if [ "$SCOPE" = "project" ] && ! selected local-models "$EXTENSIONS_SPEC" \
+    && [ ! -e "$DEST/extensions/local-models.ts" ] \
+    && [ ! -e "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/extensions/local-models.ts" ]; then
+    printf '\nNOTE: Pi reads .pi/models.json only through the local-models extension; add --extensions local-models.\n'
+  fi
+fi
