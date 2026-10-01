@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CopilotClient } from "@github/copilot-sdk";
@@ -23,18 +23,21 @@ const localProviders = [
     protocol: "openai-compatible",
     mark: "L",
     baseUrl: process.env.LMSTUDIO_BASE_URL || "http://127.0.0.1:1234/v1",
+    apiKey: process.env.LMSTUDIO_API_KEY || "",
   },
   {
     provider: "oMLX",
     protocol: "openai-compatible",
     mark: "M",
     baseUrl: process.env.OMLX_BASE_URL || "http://127.0.0.1:8000/v1",
+    apiKey: process.env.OMLX_API_KEY || "",
   },
   {
     provider: "Ollama",
     protocol: "ollama",
     mark: "O",
     baseUrl: process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
+    apiKey: process.env.OLLAMA_API_KEY || "",
   },
 ];
 
@@ -107,12 +110,47 @@ function curlArgs(url, { body, timeoutMs }) {
   return args;
 }
 
+function localHttpError(url, status, text = "", apiKey = "") {
+  if (status === 401 || status === 403) {
+    return new Error(`${url} returned HTTP ${status}: local API authentication failed. Enter a valid API key when registering the model, set the provider's API-key environment variable (e.g. OMLX_API_KEY), or configure pi for this same Base URL.`);
+  }
+  const detail = apiKey ? text.replaceAll(apiKey, "[redacted]") : text;
+  return new Error(`${url} returned HTTP ${status}${detail ? `: ${detail.slice(0, 500)}` : ""}`);
+}
+
 async function curlJson(url, options = {}) {
   const timeoutMs = options.timeoutMs || DISCOVERY_TIMEOUT_MS;
-  const { stdout } = await runCommand("curl", curlArgs(url, { ...options, timeoutMs }), {
-    input: options.body === undefined ? undefined : JSON.stringify(options.body),
-    timeoutMs: timeoutMs + 1000,
-  });
+  if (options.apiKey) {
+    const response = await fetch(url, {
+      method: options.body === undefined ? "GET" : "POST",
+      headers: {
+        Accept: "application/json",
+        ...(options.body === undefined ? {} : { "Content-Type": "application/json" }),
+        Authorization: `Bearer ${options.apiKey}`,
+      },
+      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      redirect: "error",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const text = await response.text();
+    if (!response.ok) throw localHttpError(url, response.status, text, options.apiKey);
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`${url} returned invalid JSON`);
+    }
+  }
+  let stdout;
+  try {
+    ({ stdout } = await runCommand("curl", curlArgs(url, { ...options, timeoutMs }), {
+      input: options.body === undefined ? undefined : JSON.stringify(options.body),
+      timeoutMs: timeoutMs + 1000,
+    }));
+  } catch (error) {
+    const status = error.message.match(/returned error: (\d{3})/)?.[1];
+    if (status) throw localHttpError(url, Number(status));
+    throw error;
+  }
   try {
     return JSON.parse(stdout);
   } catch {
@@ -138,6 +176,52 @@ function safeLocalBaseUrl(value) {
   return url.toString().replace(/\/$/, "");
 }
 
+function sameLocalEndpoint(left, right) {
+  try {
+    return safeLocalBaseUrl(left) === safeLocalBaseUrl(right);
+  } catch {
+    return false;
+  }
+}
+
+function resolvePiApiKey(value, env) {
+  if (typeof value !== "string" || value.startsWith("!")) return "";
+  let missing = false;
+  const key = value.replace(/\$(\$|!|\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))/g,
+    (_, reference, braced, bare) => {
+      if (reference === "$" || reference === "!") return reference;
+      const resolved = env[braced || bare];
+      if (!resolved) missing = true;
+      return resolved || "";
+    }).trim();
+  return !missing && key.length <= 4096 && !/[\r\n]/.test(key) ? key : "";
+}
+
+export async function resolveLocalApiKey(model, {
+  providers = localProviders,
+  env = process.env,
+  piModelsPath = join((env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"))
+    .replace(/^~(?=\/|$)/, homedir()), "models.json"),
+} = {}) {
+  if (model.apiKey) return model.apiKey;
+  const configured = providers.find((provider) => provider.apiKey
+    && provider.protocol === model.protocol && sameLocalEndpoint(provider.baseUrl, model.baseUrl));
+  if (configured) return configured.apiKey;
+  if (model.protocol !== "openai-compatible") return "";
+  let config;
+  try {
+    config = JSON.parse(await readFile(piModelsPath, "utf8"));
+  } catch {
+    return "";
+  }
+  for (const provider of Object.values(config?.providers || {})) {
+    if (provider?.api !== "openai-completions" || !sameLocalEndpoint(provider.baseUrl, model.baseUrl)) continue;
+    const key = resolvePiApiKey(provider.apiKey, env);
+    if (key) return key;
+  }
+  return "";
+}
+
 function publicModel(model) {
   const { id, name, provider, protocol, model: modelId, mark, baseUrl } = model;
   return { id, name, provider, protocol, model: modelId, mark, baseUrl };
@@ -160,16 +244,42 @@ function openAiModelIds(payload) {
     .map((item) => item.id);
 }
 
-async function discoverLocalProvider(config) {
+export async function discoverLocalProvider(config) {
   const baseUrl = safeLocalBaseUrl(config.baseUrl);
+  const apiKey = await resolveLocalApiKey({ ...config, baseUrl });
   const url = config.protocol === "ollama"
     ? `${baseUrl}/api/tags`
     : `${baseUrl.replace(/\/v1$/, "")}/v1/models`;
-  const payload = await curlJson(url);
+  const payload = await curlJson(url, { apiKey });
   const ids = config.protocol === "ollama"
     ? (payload.models || []).map((item) => item?.name || item?.model).filter(Boolean)
     : openAiModelIds(payload);
-  return ids.map((model) => registerModel({ ...config, baseUrl, name: model, model }));
+  return ids.filter((model) => !isAutoModel(model)).map((model) => registerModel({ ...config, baseUrl, apiKey, name: model, model }));
+}
+
+export function isAutoModel(model) {
+  const values = typeof model === "string"
+    ? [model]
+    : [model?.name, model?.id, model?.model];
+  return values.some((value) => {
+    const text = String(value || "").trim().toLowerCase();
+    return text === "auto" || text.split(/[:/]/).pop() === "auto";
+  });
+}
+
+export function deduplicateModels(models) {
+  const seen = new Set();
+  const normalizeLabel = (value) => String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+  return models.filter((model) => {
+    const provider = normalizeLabel(model.provider);
+    const name = normalizeLabel(model.name || model.model) || normalizeLabel(model.id);
+    const protocol = normalizeLabel(model.protocol);
+    const endpoint = String(model.baseUrl || "").trim();
+    const key = JSON.stringify([provider, name, protocol, endpoint]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function parseCopilotModels(output) {
@@ -181,14 +291,15 @@ export function parseCopilotModels(output) {
     if (Array.isArray(rows)) {
       return rows
         .map((item) => typeof item === "string" ? item : item?.id || item?.name)
-        .filter((item) => typeof item === "string" && item.trim());
+        .filter((item) => typeof item === "string" && item.trim() && !isAutoModel(item));
     }
   } catch {
     // The CLI may emit a plain-text model list.
   }
   return [...new Set(trimmed.split(/\r?\n/)
     .map((line) => line.replace(/^[\s*•-]+/, "").split(/\s{2,}/)[0].trim())
-    .filter((line) => /^[A-Za-z0-9][A-Za-z0-9._:/-]+$/.test(line)))];
+    .filter((line) => /^[A-Za-z0-9][A-Za-z0-9._:/-]+$/.test(line))
+    .filter((line) => !isAutoModel(line)))];
 }
 
 async function discoverCopilot() {
@@ -196,7 +307,7 @@ async function discoverCopilot() {
   try {
     await client.start();
     const models = await client.listModels();
-    return models.map((model) => registerModel({
+    return models.filter((model) => !isAutoModel(model)).map((model) => registerModel({
       name: model.name || model.id,
       provider: "GitHub Copilot",
       protocol: "copilot-cli",
@@ -232,9 +343,13 @@ export async function discoverModels() {
     };
   });
   for (const model of manualRegistry.values()) {
+    if (isAutoModel(model)) continue;
     registry.set(model.id, model);
     if (!models.some(({ id }) => id === model.id)) models.push(publicModel(model));
   }
+  const selectable = deduplicateModels(models.filter((model) => !isAutoModel(model)));
+  models.length = 0;
+  models.push(...selectable);
   if (manualRegistry.size) {
     providers.push({ provider: "Manually registered", available: true, count: manualRegistry.size });
   }
@@ -247,6 +362,7 @@ async function runLocalModel(model, prompt) {
   const url = isOllama ? `${baseUrl}/api/chat` : `${baseUrl}/chat/completions`;
   const payload = await curlJson(url, {
     timeoutMs: REQUEST_TIMEOUT_MS,
+    apiKey: model.apiKey,
     body: { model: model.model, messages: [{ role: "user", content: prompt }], stream: false },
   });
   const text = isOllama ? payload?.message?.content : payload?.choices?.[0]?.message?.content;
@@ -379,12 +495,19 @@ export async function handleRequest(request, response) {
         sendJson(response, 400, { error: error.message });
         return;
       }
+      const suppliedApiKey = String(body.apiKey || "").trim();
+      if (suppliedApiKey.length > 4096 || /[\r\n]/.test(suppliedApiKey)) {
+        sendJson(response, 400, { error: "API key must be at most 4,096 characters and contain no line breaks" });
+        return;
+      }
+      const apiKey = await resolveLocalApiKey({ baseUrl, protocol: body.protocol, apiKey: suppliedApiKey });
       const model = registerModel({
         name: String(body.name || body.model).trim().slice(0, 120),
         provider: String(body.provider || "Local model").trim().slice(0, 80),
         protocol: body.protocol,
         model: body.model.trim().slice(0, 200),
         baseUrl,
+        apiKey,
         mark: String(body.mark || body.provider || "L").trim().slice(0, 1).toUpperCase(),
       }, { manual: true });
       sendJson(response, 201, { model });

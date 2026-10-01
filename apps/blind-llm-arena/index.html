@@ -31,7 +31,7 @@
       </section>
 
       <details class="panel model-panel" open>
-        <summary>Models <span id="model-count">3 selected</span></summary>
+        <summary>Models <span id="model-count">0 selected</span></summary>
         <div class="model-tools">
           <p id="discovery-status" role="status" aria-live="polite">Checking local runtimes and Copilot…</p>
           <button id="refresh-models" class="button secondary" type="button">Refresh models</button>
@@ -44,6 +44,7 @@
             <label>Protocol<select name="protocol"><option value="openai-compatible">OpenAI compatible</option><option value="ollama">Ollama</option></select></label>
             <label>Base URL<input name="baseUrl" value="http://127.0.0.1:1234/v1" required></label>
             <label>Model ID<input name="model" placeholder="publisher/model-name" maxlength="200" required></label>
+            <label>API key (optional)<input name="apiKey" type="password" autocomplete="new-password" placeholder="Blank uses server / pi credentials"></label>
             <div class="form-action"><button class="button primary" type="submit">Register model</button><span id="model-form-status" role="status" aria-live="polite"></span></div>
           </form>
         </details>
@@ -63,8 +64,9 @@
 
       <details class="panel safety">
         <summary>Runtime details &amp; safety</summary>
-        <p>The server discovers LM Studio, oMLX, Ollama, and models available to your authenticated GitHub Copilot CLI. Selected models are shuffled into anonymous cards on every run.</p>
-        <p>Local requests run through <code>curl</code>; Copilot requests use the CLI. Results are saved in private operating-system temporary directories before display. Only loopback endpoints can be registered.</p>
+        <p>The server discovers LM Studio, oMLX, Ollama, and models available to your authenticated GitHub Copilot CLI. Selected models are shuffled into anonymous cards on every run. Mock responses are enabled by default; turn them off to call real models.</p>
+        <p>For authenticated local APIs, enter an API key or set the provider's environment variable (e.g. <code>OMLX_API_KEY</code>). If neither is supplied, OpenAI-compatible endpoints can reuse pi's key from <code>~/.pi/agent/models.json</code> only when the Base URL matches exactly. Leaving the key field blank inherits server credentials. Keys are kept server-side and are not returned to the browser. Only loopback endpoints can be registered.</p>
+        <p>Local requests use the provider API; Copilot requests use the official CLI SDK. Results are saved in private operating-system temporary directories before display.</p>
         <p>Generated HTML previews run in a sandboxed iframe. Response source is always rendered as text.</p>
       </details>
     </main>
