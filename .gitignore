@@ -2,8 +2,16 @@
 node_modules
 *.log
 .DS_Store
-model-evals/__pycache__/
-model-evals/*.pyc
-model-evals/*.pyo
-model-evals/*.pyd
-model-evals/.env
+benchmarks/model-evals/__pycache__/
+benchmarks/model-evals/*.pyc
+benchmarks/model-evals/*.pyo
+benchmarks/model-evals/*.pyd
+benchmarks/model-evals/.env
+
+# Blind LLM Arena local configuration and generated files
+/experiments/blind-llm-arena/.env
+/experiments/blind-llm-arena/.env.*
+!/experiments/blind-llm-arena/.env.example
+/experiments/blind-llm-arena/coverage/
+/experiments/blind-llm-arena/dist/
+/experiments/blind-llm-arena/.webui_secret_key

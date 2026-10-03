@@ -86,14 +86,16 @@ function makeCard(letter) {
   article.innerHTML = `
     <div class="card-head"><div class="card-name"><span class="letter">${letter}</span><div><h2>Model ${letter}</h2><div class="identity" hidden></div></div></div><div class="status"><b>Ready</b><span>—</span></div></div>
     <div class="card-tabs"><div><button class="tab" data-view="response" aria-selected="true">Response</button><button class="tab" data-view="preview" aria-selected="false" hidden>Preview</button></div><button class="copy" hidden>Copy</button></div>
-    <div class="card-body"><div class="empty">Run the benchmark<br>to see this response</div><pre class="response" hidden></pre><div class="error" hidden></div><iframe class="preview" title="Sandboxed HTML output preview" sandbox="allow-scripts" hidden></iframe></div>`;
+    <div class="card-body"><div class="empty">Run the benchmark<br>to see this response</div><pre class="response" hidden></pre><div class="error" hidden></div><div class="preview-status" role="status" aria-live="polite" hidden></div><iframe class="preview" title="Sandboxed HTML output preview" sandbox="allow-scripts" referrerpolicy="no-referrer" hidden></iframe></div>`;
   const card = {
     article, identity: article.querySelector(".identity"), status: article.querySelector(".status b"),
     latency: article.querySelector(".status span"), empty: article.querySelector(".empty"),
     response: article.querySelector(".response"), error: article.querySelector(".error"),
     preview: article.querySelector(".preview"), responseTab: article.querySelector('[data-view="response"]'),
     previewTab: article.querySelector('[data-view="preview"]'), copy: article.querySelector(".copy"),
-    content: "", html: "",
+    previewStatus: article.querySelector(".preview-status"),
+    content: "", html: "", previewToken: "", previewStarted: false, previewReady: false,
+    previewError: "", previewMessage: "", previewTimer: null,
   };
   article.addEventListener("click", async (event) => {
     const tab = event.target.closest("[data-view]");
@@ -115,6 +117,7 @@ function setupCards() {
   elements.revealLabel.textContent = "Reveal Identities";
   elements.reveal.setAttribute("aria-pressed", "false");
   elements.revealBanner.hidden = true;
+  for (const card of state.cards.values()) clearTimeout(card.previewTimer);
   elements.grid.replaceChildren();
   state.cards.clear();
   activeModels().forEach((_, index) => {
@@ -139,16 +142,60 @@ function shuffle(models) {
   return result;
 }
 
-function htmlDocument(text) {
+function htmlDocument(text, token) {
   const fenced = text.match(/```(?:html)?\s*\n([\s\S]*?)```/i)?.[1]?.trim();
   const value = fenced || text.trim();
   if (!/<!doctype\s+html|<html[\s>]/i.test(value)) return "";
   const documentNode = new DOMParser().parseFromString(value, "text/html");
   const policy = documentNode.createElement("meta");
   policy.httpEquiv = "Content-Security-Policy";
-  policy.content = "default-src 'none'; script-src 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'";
-  documentNode.head.prepend(policy);
+  policy.content = "default-src 'none'; script-src 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com/lucide@latest https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; base-uri 'none'; form-action 'none'";
+  const bridge = documentNode.createElement("script");
+  bridge.textContent = `(() => {
+    const token = ${JSON.stringify(token)};
+    const send = (type, message = "") => parent.postMessage({ type, token, message }, "*");
+    addEventListener("DOMContentLoaded", () => {
+      send("arena-preview-ready");
+      const reportSize = () => send("arena-preview-resize", String(Math.max(
+        document.documentElement.scrollHeight, document.body?.scrollHeight || 0
+      )));
+      reportSize();
+      const observer = new ResizeObserver(reportSize);
+      observer.observe(document.documentElement);
+      if (document.body) observer.observe(document.body);
+    }, { once: true });
+    addEventListener("error", (event) => {
+      const message = event.target?.src
+        ? "Could not load " + event.target.src
+        : event.message || "The generated preview encountered a JavaScript error.";
+      send("arena-preview-error", message);
+    }, true);
+    addEventListener("unhandledrejection", (event) => {
+      send("arena-preview-error", event.reason?.message || String(event.reason));
+    });
+  })();`;
+  documentNode.head.prepend(policy, bridge);
   return `<!doctype html>${documentNode.documentElement.outerHTML}`;
+}
+
+function renderPreviewStatus(card) {
+  card.previewStatus.hidden = card.preview.hidden || (card.previewReady && !card.previewError);
+  card.previewStatus.classList.toggle("error", Boolean(card.previewError));
+  card.previewStatus.textContent = card.previewError
+    ? `Preview issue: ${card.previewError}`
+    : card.previewMessage;
+}
+
+function resetPreview(card) {
+  clearTimeout(card.previewTimer);
+  card.preview.removeAttribute("srcdoc");
+  card.preview.style.height = "";
+  card.previewToken = "";
+  card.previewStarted = false;
+  card.previewReady = false;
+  card.previewError = "";
+  card.previewMessage = "";
+  card.previewStatus.hidden = true;
 }
 
 function showView(card, view) {
@@ -158,10 +205,50 @@ function showView(card, view) {
   card.preview.hidden = !preview;
   card.responseTab.setAttribute("aria-selected", String(!preview));
   card.previewTab.setAttribute("aria-selected", String(preview));
-  if (preview) card.preview.srcdoc = card.html;
+  if (preview && !card.previewStarted) {
+    card.previewStarted = true;
+    card.previewMessage = "Loading interactive preview…";
+    card.preview.srcdoc = card.html;
+    card.previewTimer = setTimeout(() => {
+      card.previewMessage = "Preview is still loading. Check your connection to the allowed CDNs.";
+      renderPreviewStatus(card);
+    }, 10000);
+  }
+  renderPreviewStatus(card);
 }
 
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || !["arena-preview-ready", "arena-preview-error", "arena-preview-resize"].includes(data.type)) return;
+  for (const card of state.cards.values()) {
+    // Sandboxed documents have an opaque origin; match the frame and per-response token instead.
+    if (event.source !== card.preview.contentWindow || data.token !== card.previewToken) continue;
+    if (data.type === "arena-preview-resize") {
+      const height = Number(data.message);
+      if (!card.preview.hidden && Number.isFinite(height) && height > 0) {
+        card.preview.style.height = `${Math.min(900, Math.max(380, Math.ceil(height)))}px`;
+      }
+      break;
+    }
+    clearTimeout(card.previewTimer);
+    if (data.type === "arena-preview-ready") card.previewReady = true;
+    else if (!card.previewError) {
+      card.previewError = typeof data.message === "string"
+        ? data.message.slice(0, 500)
+        : "The generated preview encountered a JavaScript error.";
+    }
+    renderPreviewStatus(card);
+    break;
+  }
+});
+
 function resetCard(card) {
+  resetPreview(card);
+  card.content = "";
+  card.html = "";
+  card.response.textContent = "";
+  card.responseTab.setAttribute("aria-selected", "true");
+  card.previewTab.setAttribute("aria-selected", "false");
   card.identity.hidden = true;
   card.identity.classList.remove("revealed");
   card.empty.hidden = false;
@@ -175,13 +262,16 @@ function resetCard(card) {
 }
 
 function showResponse(card, text) {
+  resetPreview(card);
   card.content = text;
-  card.html = htmlDocument(text);
+  card.previewToken = crypto.randomUUID();
+  card.html = htmlDocument(text, card.previewToken);
   card.empty.hidden = true;
-  card.response.hidden = false;
+  card.error.hidden = true;
   card.response.textContent = text;
   card.previewTab.hidden = !card.html;
   card.copy.hidden = false;
+  showView(card, "response");
 }
 
 async function discoverModels() {

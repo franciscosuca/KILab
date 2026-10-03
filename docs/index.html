@@ -14,10 +14,10 @@
   <!-- 1 · Cover -->
   <section class="slide" id="s1" aria-label="Slide 1: Title">
     <div class="slide-inner center">
-      <p class="kicker f">AISDLC Workshop</p>
+      <p class="kicker f"><time datetime="2026-09-30">30 September 2026</time></p>
       <h1 class="f d1">Frontier Quality<br>on Local Hardware</h1>
       <p class="lede f d2">A practical guide to open-weight models, memory &amp; bandwidth, inference servers, and harnesses.</p>
-      <p class="meta f d3">Francisco Susana · <a href="https://github.com/franciscosuca">github.com/franciscosuca</a></p>
+      <p class="meta f d3">By Francisco Susana Canela · <a href="https://github.com/franciscosuca">github.com/franciscosuca</a></p>
     </div>
   </section>
 
@@ -25,7 +25,7 @@
   <section class="slide" id="s2" aria-label="Slide 2: Opening video">
     <div class="slide-inner wide">
       <p class="kicker f">A short opening</p>
-      <h2 class="f d1">A glimpse of what’s possible</h2>
+      <h2 class="f d1">What is the status of LLMs as of <time datetime="2026-09-22">22 September 2026</time>?</h2>
       <figure class="figure f d2">
         <div class="video-frame">
           <iframe
@@ -60,7 +60,7 @@
     <div class="slide-inner wide">
       <p class="kicker f">02 · The moment</p>
       <h2 class="f d1">Is there still a gap?</h2>
-      <p class="lede f d2">We put a local open-weight model, <span class="mono">Qwen3.8-27B-MLX-4bit</span>, up against a frontier model, <span class="mono">gpt-6-luna</span>.</p>
+      <p class="lede f d2">As of <time datetime="2026-08-26">26 August 2026</time>, the frontier model <span class="mono">gpt-6-luna</span> and the local open-weight <span class="mono">Qwen3.8-27B</span> score <em class="acc">almost the same</em> on the independent Artificial Analysis Intelligence Index.</p>
       <figure class="figure f d3">
         <img src="assets/aa-intelligence-index.png" alt="Artificial Analysis Intelligence Index chart showing closed, open-but-large, and open-weight models">
         <figcaption>Artificial Analysis Intelligence Index. Annotations mark closed models ($$$), open-but-large models ($$), and small/medium open-weight models ($). One chart illustrates the trend — it does not prove universal equivalence.</figcaption>
@@ -68,16 +68,37 @@
     </div>
   </section>
 
-  <!-- 5 · Dense vs sparse (MoE) -->
-  <section class="slide" id="s5" aria-label="Slide 5: Dense versus sparse">
+  <!-- 5 · Dense vs sparse (MoE) + server choice -->
+  <section class="slide" id="s5" aria-label="Slide 5: Dense versus sparse and server choice">
     <div class="slide-inner wide">
       <p class="kicker f">03 · One key concept</p>
       <h2 class="f d1">Dense vs. sparse (MoE)</h2>
+      <figure class="model-diagram f d2" aria-label="Dense models activate all parameter groups for each token; sparse mixture-of-experts models activate selected expert groups.">
+        <div class="model-diagram-mode">
+          <div class="model-diagram-heading"><h3>Dense</h3><span>All parameters / token</span></div>
+          <div class="model-tiles" aria-hidden="true">
+            <span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span>
+            <span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span><span class="model-tile is-on"></span>
+          </div>
+        </div>
+        <div class="model-diagram-mode">
+          <div class="model-diagram-heading"><h3>Mixture of Experts</h3><span>Selected experts / token</span></div>
+          <div class="model-tiles" aria-hidden="true">
+            <span class="model-tile is-on"></span><span class="model-tile"></span><span class="model-tile"></span><span class="model-tile is-on"></span><span class="model-tile"></span><span class="model-tile"></span>
+            <span class="model-tile"></span><span class="model-tile is-on"></span><span class="model-tile"></span><span class="model-tile"></span><span class="model-tile is-on"></span><span class="model-tile"></span>
+          </div>
+        </div>
+      </figure>
       <ul class="rows f d2">
         <li><span class="k">Dense</span><span class="v">Uses <strong>all parameters</strong> for each token — the generalist who brings the full toolkit every time.</span></li>
         <li><span class="k">Sparse / MoE</span><span class="v">Activates <strong>selected experts</strong> per token — but <strong>all model weights still need to fit in memory</strong>.</span></li>
       </ul>
-      <p class="note f d3">Tools like <strong>LMFIT</strong> help match a model to your hardware.</p>
+      <p class="note f d3">Tools like <a href="https://www.llmfit.org/"><strong>llmfit</strong></a> help match a model to your hardware.</p>
+      <h3 class="subhead f d4">Choose a server, keep the defaults</h3>
+      <ul class="rows f d5">
+        <li><span class="k">MLX</span><span class="v">Optimized for Apple Silicon. Best performance on a Mac.</span></li>
+        <li><span class="k">GGUF</span><span class="v">Cross-platform. Runs everywhere — not always as optimized on Mac.</span></li>
+      </ul>
     </div>
   </section>
 
@@ -171,8 +192,9 @@
     <div class="slide-inner wide">
       <p class="kicker f">05 · Software</p>
       <h2 class="f d1">Two layers: server + harness</h2>
-      <div class="table-wrap f d2">
-        <table class="spec">
+      <p class="lede f d2">The server loads the model and exposes it through an API, usually OpenAI-compatible. The harness sends your prompt to that API and shows the answer — so you can <em class="acc">mix and match</em> them freely.</p>
+      <div class="table-wrap f d3">
+        <table class="spec stack">
           <thead>
             <tr>
               <th scope="col">Layer</th>
@@ -183,13 +205,27 @@
           <tbody>
             <tr>
               <th scope="row">Server</th>
-              <td>Runs the model. Turns the weights into a running engine.</td>
-              <td>Ollama · vLLM · MLX · llama.cpp</td>
+              <td class="does">Runs the model. Turns the weights into a running engine.</td>
+              <td>
+                <ul class="tools">
+                  <li><a href="https://ollama.com"><img src="assets/logos/ollama.png" alt="" width="20" height="20">Ollama</a></li>
+                  <li><a href="https://vllm.ai"><img src="assets/logos/vllm.svg" alt="" width="20" height="20">vLLM</a></li>
+                  <li><a href="https://github.com/ml-explore/mlx"><img src="assets/logos/mlx.png" alt="" width="20" height="20">MLX</a></li>
+                  <li><a href="https://github.com/ggml-org/llama.cpp"><img src="assets/logos/llamacpp.png" alt="" width="20" height="20">llama.cpp</a></li>
+                </ul>
+              </td>
             </tr>
             <tr>
               <th scope="row">Harness</th>
-              <td>Supplies the prompt and presents the result. Your interface to the model.</td>
-              <td>LM Studio · VSCode · Codex · Pi</td>
+              <td class="does">Supplies the prompt and presents the result. Your interface to the model.</td>
+              <td>
+                <ul class="tools">
+                  <li><a href="https://lmstudio.ai"><img src="assets/logos/lmstudio.png" alt="" width="20" height="20">LM Studio</a></li>
+                  <li><a href="https://code.visualstudio.com"><img src="assets/logos/vscode.png" alt="" width="20" height="20">VS Code</a></li>
+                  <li><a href="https://openai.com/codex/"><img src="assets/logos/codex.png" alt="" width="20" height="20">Codex</a></li>
+                  <li><a href="https://pi.dev"><img src="assets/logos/pi.svg" alt="" width="20" height="20">Pi</a></li>
+                </ul>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -197,36 +233,25 @@
     </div>
   </section>
 
-  <!-- 10 · Choose a server -->
-  <section class="slide" id="s10" aria-label="Slide 10: Choose a server">
-    <div class="slide-inner wide">
-      <p class="kicker f">05 · Software — Server</p>
-      <h2 class="f d1">Choose a server, keep the defaults</h2>
-      <ul class="rows f d2">
-        <li><span class="k">MLX</span><span class="v">Optimized for Apple Silicon. Best performance on a Mac.</span></li>
-        <li><span class="k">GGUF</span><span class="v">Cross-platform. Runs everywhere — not always as optimized on Mac.</span></li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- 11 · The harness tax -->
-  <section class="slide" id="s11" aria-label="Slide 11: The harness tax">
+  <!-- 10 · The harness tax -->
+  <section class="slide" id="s10" aria-label="Slide 10: The harness tax">
     <div class="slide-inner wide">
       <p class="kicker f">05 · Software — Harness</p>
       <h2 class="f d1">The harness tax</h2>
-      <ul class="rows f d2">
+      <p class="lede f d2">The <em class="acc">harness tax</em> is the hidden overhead a harness adds to every request: its system prompt, tool definitions and extra calls. Same model, similar results, very different cost.</p>
+      <ul class="rows f d3">
         <li><span class="k">Heavier IDEs</span><span class="v">(e.g. VS Code) may add system and context overhead to every request — consuming the context window you paid for in RAM.</span></li>
         <li><span class="k">Lighter clients</span><span class="v">(e.g. Pi) leave more of the context window for your actual prompt.</span></li>
       </ul>
-      <figure class="figure f d3">
+      <figure class="figure f d4">
         <video src="assets/arena-harness-tax.mov" autoplay loop muted playsinline alt="arena.ai SWE-bench Lite cost-scaling replay"></video>
         <figcaption>arena.ai SWE-bench Lite cost-scaling replay. Read more: <a href="https://arena.ai/blog/coding-agents-harness-tax">Coding Agents &amp; the Harness Tax — arena.ai</a></figcaption>
       </figure>
     </div>
   </section>
 
-  <!-- 12 · An honest take -->
-  <section class="slide" id="s12" aria-label="Slide 12: An honest take">
+  <!-- 11 · An honest take -->
+  <section class="slide" id="s11" aria-label="Slide 11: An honest take">
     <div class="slide-inner">
       <p class="kicker f">06 · Closing</p>
       <h2 class="f d1">An honest take</h2>
@@ -235,20 +260,21 @@
     </div>
   </section>
 
-  <!-- 13 · Closing -->
-  <section class="slide" id="s13" aria-label="Slide 13: Closing">
+  <!-- 12 · Closing -->
+  <section class="slide" id="s12" aria-label="Slide 12: Closing">
     <div class="slide-inner center">
       <p class="kicker f">We're no longer talking about someday</p>
       <h2 class="f d1">The question isn't whether local AI can compete.</h2>
       <p class="lede f d2">It's whether you're ready to <em class="acc">stop paying for what you can run yourself</em>.</p>
       <p class="meta f d3">Thank you.</p>
+      <p class="meta f d4">Try the experiments yourself → <a href="https://github.com/franciscosuca/KILab/tree/main/experiments">github.com/franciscosuca/KILab/experiments</a></p>
     </div>
   </section>
 
 </main>
 
 <div class="progress" data-progress></div>
-<div class="hud" data-counter>01 / 13</div>
+<div class="hud" data-counter>01 / 12</div>
 <div class="hint" data-hint>Scroll · ↑ ↓ · Space</div>
 
 <script src="script.js"></script>

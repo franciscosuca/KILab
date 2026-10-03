@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b12">
+  <meta name="description" content="A safe, interactive self-destruct countdown visual demo. Nothing is actually destroyed.">
+  <title>Self-Destruct // Visual Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b12;
+      --panel: rgba(17, 22, 32, .88);
+      --line: rgba(160, 177, 199, .14);
+      --muted: #8994a6;
+      --soft-white: #eef2f7;
+      --red: #ff594f;
+      --orange: #ff9b57;
+      --mint: #83e5c0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--soft-white);
+      background:
+        radial-gradient(ellipse at 51% 34%, rgba(59, 29, 37, .23), transparent 43%),
+        radial-gradient(ellipse at 88% 7%, rgba(45, 65, 91, .18), transparent 31%),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body::before {
+      position: fixed;
+      z-index: -1;
+      inset: 0;
+      content: "";
+      pointer-events: none;
+      opacity: .24;
+      background-image: radial-gradient(rgba(174, 190, 212, .28) .65px, transparent .65px);
+      background-size: 26px 26px;
+      mask-image: linear-gradient(to bottom, black, transparent 88%);
+    }
+    button { font: inherit; }
+    button:focus-visible { outline: 2px solid #ffd0a6; outline-offset: 4px; }
+    .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .shell { width: min(1100px, calc(100% - 40px)); margin-inline: auto; }
+    .topbar { height: 86px; border-bottom: 1px solid rgba(170, 184, 204, .11); }
+    .brand-mark {
+      display: grid; width: 34px; height: 34px; place-items: center;
+      border: 1px solid rgba(255, 122, 100, .34); border-radius: 10px;
+      color: #ff9b82; background: rgba(255, 94, 77, .08);
+      box-shadow: 0 0 24px rgba(255, 94, 77, .08);
+    }
+    .eyebrow { letter-spacing: .17em; }
+    .sim-badge { border: 1px solid rgba(131, 229, 192, .22); color: #9be6c9; background: rgba(52, 151, 116, .09); }
+    .panel {
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, rgba(20, 26, 38, .96), rgba(13, 17, 26, .97));
+      box-shadow: 0 28px 100px rgba(0, 0, 0, .38), inset 0 1px rgba(255,255,255,.025);
+    }
+    .main-card { overflow: hidden; border-radius: 22px; }
+    .card-topline { height: 3px; background: linear-gradient(90deg, transparent 2%, #ff6555 34%, #ffad6b 56%, transparent 96%); opacity: .8; }
+    .stage {
+      position: relative; isolation: isolate; display: grid; min-height: 410px; place-items: center;
+      overflow: hidden; border: 1px solid rgba(154, 172, 196, .1); border-radius: 18px;
+      background: radial-gradient(ellipse at 50% 46%, rgba(98, 39, 46, .19), transparent 47%), rgba(8, 12, 19, .56);
+    }
+    .stage::before, .stage::after {
+      position: absolute; z-index: -1; content: ""; border: 1px solid rgba(151, 170, 194, .055); border-radius: 50%;
+    }
+    .stage::before { width: 360px; height: 360px; }
+    .stage::after { width: 280px; height: 280px; }
+    .core-wrap { position: relative; width: 230px; height: 230px; display: grid; place-items: center; }
+    .ring-svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+    .ring-track, .ring-progress { fill: none; stroke-width: 2; }
+    .ring-track { stroke: rgba(172, 188, 207, .12); }
+    .ring-progress { stroke: var(--red); stroke-linecap: round; stroke-dasharray: 678.6; stroke-dashoffset: 678.6; filter: drop-shadow(0 0 6px rgba(255, 83, 73, .7)); transition: stroke-dashoffset .2s linear; }
+    .core-shell {
+      position: relative; z-index: 2; width: 158px; height: 158px; display: grid; place-items: center;
+      border: 1px solid rgba(255, 115, 93, .35); border-radius: 50%;
+      background: radial-gradient(circle at 48% 43%, rgba(255, 100, 78, .16), rgba(75, 29, 36, .1) 48%, rgba(15, 17, 25, .96) 73%);
+      box-shadow: inset 0 0 34px rgba(255, 90, 75, .09), 0 0 48px rgba(255, 66, 57, .08);
+    }
+    .core-shell::before, .core-shell::after { position: absolute; content: ""; border-radius: 50%; }
+    .core-shell::before { inset: 11px; border: 1px dashed rgba(255, 153, 116, .27); }
+    .core-shell::after { inset: 28px; border: 1px solid rgba(255, 143, 111, .12); }
+    .core-center { position: relative; z-index: 1; text-align: center; }
+    .timer-value { color: #f4f0ed; font-size: 43px; line-height: 1; font-weight: 650; letter-spacing: -.07em; text-shadow: 0 0 22px rgba(255, 105, 80, .2); }
+    .timer-label { margin-top: 9px; color: #a5a6ad; font-size: 9px; letter-spacing: .22em; }
+    .core-lights { position: absolute; inset: -7px; pointer-events: none; }
+    .core-lights i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #ff9876; box-shadow: 0 0 10px #ff654f; }
+    .core-lights i:nth-child(1) { top: 20%; left: 14%; }
+    .core-lights i:nth-child(2) { top: 17%; right: 18%; opacity: .52; }
+    .core-lights i:nth-child(3) { bottom: 15%; left: 26%; opacity: .62; }
+    .core-lights i:nth-child(4) { right: 13%; bottom: 25%; }
+    .sequence-button {
+      min-height: 55px; border: 1px solid rgba(255, 167, 135, .56); border-radius: 11px;
+      color: #fff3ee; background: linear-gradient(180deg, #d84b45, #b93236);
+      box-shadow: 0 8px 25px rgba(204, 49, 47, .22), inset 0 1px rgba(255,255,255,.16);
+      transition: transform .16s ease, filter .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+    .sequence-button:hover:not(:disabled) { filter: brightness(1.14); transform: translateY(-2px); box-shadow: 0 12px 34px rgba(230, 63, 54, .3), inset 0 1px rgba(255,255,255,.2); }
+    .sequence-button:active:not(:disabled) { transform: translateY(1px) scale(.99); filter: brightness(.94); box-shadow: 0 3px 12px rgba(204, 49, 47, .2), inset 0 2px 8px rgba(45, 7, 10, .25); }
+    .sequence-button:disabled { cursor: not-allowed; color: #aaa1a0; border-color: #524344; background: linear-gradient(180deg, #514144, #393238); box-shadow: none; filter: saturate(.35); }
+    .secondary-button {
+      min-height: 45px; border: 1px solid rgba(183, 197, 216, .19); border-radius: 10px;
+      color: #d9e0e9; background: rgba(255,255,255,.035);
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .secondary-button:hover:not(:disabled) { border-color: rgba(201, 214, 231, .36); background: rgba(255,255,255,.08); }
+    .secondary-button:active:not(:disabled) { transform: scale(.985); background: rgba(255,255,255,.12); }
+    .secondary-button:disabled { cursor: not-allowed; opacity: .42; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px rgba(131,229,192,.7); }
+    .readout-row + .readout-row { border-top: 1px solid rgba(162, 179, 201, .09); }
+    .progress-track { height: 4px; overflow: hidden; border-radius: 8px; background: rgba(173, 188, 208, .12); }
+    .progress-fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff6554, #ffb369); transition: width .2s linear; }
+    .counting .core-shell { animation: reactor-pulse 1.05s ease-in-out infinite; }
+    .counting .core-lights i { animation: light-flicker .72s steps(2, end) infinite; }
+    .counting .core-lights i:nth-child(2n) { animation-delay: -.34s; }
+    .counting .ring-progress { filter: drop-shadow(0 0 9px rgba(255, 83, 73, .95)); }
+    .destroyed .core-shell { animation: core-break .82s cubic-bezier(.2,.75,.25,1) forwards; }
+    .burst {
+      position: absolute; z-index: 1; width: 34px; height: 34px; border: 2px solid #ffbe84; border-radius: 50%;
+      opacity: 0; pointer-events: none;
+    }
+    .destroyed .burst { animation: expanding-burst .95s ease-out forwards; }
+    .particle {
+      position: absolute; z-index: 3; top: 50%; left: 50%; width: var(--size, 5px); height: calc(var(--size, 5px) * 1.8);
+      border-radius: 2px; background: var(--particle-color, #ffab77); opacity: 0; pointer-events: none;
+      box-shadow: 0 0 11px rgba(255, 117, 75, .58);
+    }
+    .destroyed .particle { animation: scatter .95s cubic-bezier(.15,.68,.24,1) forwards; }
+    .destroyed .particle:nth-child(3n) { animation-delay: .06s; }
+    .destroyed .particle:nth-child(4n) { animation-delay: .12s; }
+    dialog {
+      width: min(460px, calc(100% - 32px)); padding: 0; color: var(--soft-white);
+      border: 1px solid rgba(255, 141, 115, .28); border-radius: 18px;
+      background: #111620; box-shadow: 0 30px 120px rgba(0,0,0,.75);
+    }
+    dialog::backdrop { background: rgba(3, 5, 9, .78); backdrop-filter: blur(8px); }
+    .dialog-inner { padding: 28px; }
+    @keyframes reactor-pulse {
+      0%,100% { transform: scale(1); box-shadow: inset 0 0 34px rgba(255,90,75,.09), 0 0 38px rgba(255,66,57,.1); }
+      50% { transform: scale(1.035); box-shadow: inset 0 0 44px rgba(255,90,75,.2), 0 0 60px rgba(255,66,57,.23); }
+    }
+    @keyframes light-flicker { 50% { opacity: .18; } }
+    @keyframes core-break { 35% { transform: scale(1.12); filter: brightness(2.1); } 100% { transform: scale(.12); opacity: 0; filter: blur(8px); } }
+    @keyframes expanding-burst { 0% { opacity: .95; transform: scale(.3); } 100% { opacity: 0; transform: scale(8.5); } }
+    @keyframes scatter { 0% { opacity: 0; transform: translate(0,0) rotate(0) scale(.3); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(.1); } }
+    @media (max-width: 767px) {
+      .shell { width: min(100% - 28px, 560px); }
+      .topbar { height: 72px; }
+      .stage { min-height: 350px; }
+      .core-wrap { transform: scale(.9); }
+      .main-card { border-radius: 17px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body class="antialiased">
+  <header class="topbar">
+    <div class="shell flex h-full items-center justify-between">
+      <a href="#main" class="flex items-center gap-3 no-underline" aria-label="KILAB safety lab home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z" stroke="currentColor" stroke-width="1.4"/><path d="m12 8 4 2.2v3.6L12 16l-4-2.2v-3.6L12 8Z" stroke="currentColor" stroke-width="1.2"/></svg>
+        </span>
+        <span class="leading-tight"><span class="block text-[11px] font-semibold tracking-[.2em] text-slate-100">KILAB</span><span class="mt-1 block text-[9px] tracking-[.16em] text-slate-500">INTERACTION LAB</span></span>
+      </a>
+      <div class="sim-badge inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[9px] font-medium tracking-[.14em]">
+        <span class="status-dot" aria-hidden="true"></span> VISUAL SIMULATION
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="shell pb-12 pt-11 md:pt-[68px]">
+    <div class="mb-6 flex items-center justify-between">
+      <p class="eyebrow mono m-0 text-[10px] text-slate-500">CONTROL SURFACE <span class="mx-2 text-slate-700">/</span> DEMO 06</p>
+      <p class="mono m-0 text-[10px] text-slate-600">BUILD 01.08 <span class="mx-2">·</span> SAFE MODE</p>
+    </div>
+
+    <section class="panel main-card" aria-labelledby="page-title">
+      <div class="card-topline"></div>
+      <div class="grid md:grid-cols-[1.14fr_.86fr]">
+        <div class="p-5 sm:p-8 md:p-10">
+          <div class="mb-7 flex items-center justify-between">
+            <span class="eyebrow text-[9px] font-semibold text-slate-500">SEQUENCE CONTROL</span>
+            <span id="stateBadge" class="mono rounded-md border border-slate-700/70 bg-slate-900/70 px-2.5 py-1 text-[9px] tracking-[.1em] text-slate-400">STANDBY</span>
+          </div>
+          <h1 id="page-title" class="max-w-lg text-[40px] font-medium leading-[1.04] tracking-[-.055em] sm:text-[50px]">One button.<br><span class="text-slate-400">Ten seconds.</span></h1>
+          <p class="mt-4 max-w-md text-[13px] leading-6 text-slate-400">A dramatic countdown sequence, built for the thrill of the interface—not the consequences. This is a visual demo only.</p>
+
+          <div id="stage" class="stage mt-7" aria-label="Countdown display">
+            <div class="core-wrap">
+              <svg class="ring-svg" viewBox="0 0 230 230" aria-hidden="true">
+                <circle class="ring-track" cx="115" cy="115" r="108"></circle>
+                <circle id="ringProgress" class="ring-progress" cx="115" cy="115" r="108"></circle>
+              </svg>
+              <div class="core-shell" aria-hidden="true">
+                <div class="core-lights"><i></i><i></i><i></i><i></i></div>
+                <div class="core-center">
+                  <div id="timerValue" class="timer-value mono" aria-hidden="true">--</div>
+                  <div id="timerLabel" class="timer-label mono">SYSTEM READY</div>
+                </div>
+              </div>
+              <div class="burst" aria-hidden="true"></div>
+              <div id="particles" aria-hidden="true"></div>
+            </div>
+            <p class="absolute bottom-4 left-0 right-0 m-0 text-center mono text-[9px] tracking-[.2em] text-slate-600">ALL SYSTEMS SIMULATED <span class="mx-2">·</span> NO PAYLOAD</p>
+          </div>
+
+          <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+            <button id="startButton" type="button" class="sequence-button inline-flex flex-1 items-center justify-center gap-3 px-5 text-[11px] font-semibold tracking-[.13em]" aria-describedby="buttonHint">
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2.5v7m0 0 4-4m-4 4-4-4M4 11.5v3A2.5 2.5 0 0 0 6.5 17h7a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              INITIATE SEQUENCE
+            </button>
+            <button id="cancelButton" type="button" class="secondary-button px-6 text-[11px] font-semibold tracking-[.11em]" hidden>CANCEL COUNTDOWN</button>
+            <button id="resetButton" type="button" class="secondary-button px-6 text-[11px] font-semibold tracking-[.11em]" hidden>RESET DEMO</button>
+          </div>
+          <p id="buttonHint" class="mt-3 mb-0 text-center text-[11px] text-slate-600">You’ll be asked to confirm before the countdown begins.</p>
+          <p id="liveStatus" class="sr-only" role="status" aria-live="polite" aria-atomic="true">System ready. Visual simulation only.</p>
+        </div>
+
+        <aside class="border-t border-slate-700/40 bg-slate-950/20 p-5 sm:p-8 md:border-l md:border-t-0 md:p-9" aria-label="Simulation telemetry">
+          <div class="mb-8 flex items-start justify-between">
+            <div><p class="eyebrow mono m-0 text-[9px] text-slate-500">SIMULATION TELEMETRY</p><p class="mt-2 text-xs text-slate-400">Live system readout</p></div>
+            <span class="mono rounded border border-slate-700/60 px-2 py-1 text-[9px] text-slate-500">LOCAL</span>
+          </div>
+          <div class="mb-8 rounded-xl border border-slate-700/40 bg-black/15 p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <span class="mono text-[9px] tracking-[.12em] text-slate-500">SEQUENCE PROGRESS</span>
+              <span id="progressText" class="mono text-[10px] text-slate-400">0%</span>
+            </div>
+            <div class="progress-track" role="progressbar" aria-label="Countdown progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="progressFill" class="progress-fill"></div></div>
+            <div class="mt-3 flex justify-between mono text-[9px] text-slate-600"><span>T−10 SEC</span><span id="progressTarget">AWAITING START</span></div>
+          </div>
+          <div class="readout-row flex items-center justify-between py-4"><span class="mono text-[10px] tracking-[.1em] text-slate-500">MODE</span><span id="modeValue" class="mono text-[10px] text-slate-300">CONTAINED</span></div>
+          <div class="readout-row flex items-center justify-between py-4"><span class="mono text-[10px] tracking-[.1em] text-slate-500">PAYLOAD</span><span class="mono text-[10px] text-slate-300">NONE</span></div>
+          <div class="readout-row flex items-center justify-between py-4"><span class="mono text-[10px] tracking-[.1em] text-slate-500">NETWORK</span><span class="inline-flex items-center gap-2 mono text-[10px] text-slate-300"><i class="h-1.5 w-1.5 rounded-full bg-slate-600"></i> DISCONNECTED</span></div>
+          <div class="readout-row flex items-center justify-between py-4"><span class="mono text-[10px] tracking-[.1em] text-slate-500">REAL-WORLD EFFECT</span><span class="mono text-[10px] text-emerald-300">ZERO</span></div>
+          <div class="mt-8 rounded-lg border border-emerald-400/10 bg-emerald-400/[.035] px-3.5 py-3">
+            <p class="m-0 flex items-center gap-2 text-[10px] leading-5 text-slate-400"><svg aria-hidden="true" class="shrink-0 text-emerald-300" width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 2.5 16 5v4.6c0 3.8-2.6 6.3-6 7.9-3.4-1.6-6-4.1-6-7.9V5l6-2.5Z" stroke="currentColor" stroke-width="1.3"/><path d="m7.5 9.8 1.7 1.7 3.4-3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>Sandboxed visual effect. No data, devices, or systems are affected.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+    <footer class="mt-5 flex flex-col gap-2 text-[10px] text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+      <span>DESIGNED TO LOOK DANGEROUS. ENGINEERED TO BE HARMLESS.</span>
+      <span class="mono">KEYBOARD READY <span class="mx-1.5">·</span> REDUCED MOTION SUPPORTED</span>
+    </footer>
+  </main>
+
+  <dialog id="confirmDialog" aria-labelledby="dialogTitle" aria-describedby="dialogDescription">
+    <div class="dialog-inner">
+      <div class="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-red-400/20 bg-red-500/[.08] text-red-300" aria-hidden="true">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M12 3 21 19H3L12 3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 9v4m0 2.5v.1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </div>
+      <p class="eyebrow mono mb-2 text-[9px] text-red-300/80">CONFIRM SIMULATION</p>
+      <h2 id="dialogTitle" class="m-0 text-[25px] font-medium tracking-[-.04em]">Start the countdown?</h2>
+      <p id="dialogDescription" class="mt-3 mb-0 text-[13px] leading-6 text-slate-400">A 10-second visual sequence will begin. You can cancel at any time. Nothing outside this page will be affected.</p>
+      <div class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button id="dismissButton" type="button" class="secondary-button px-5 text-[10px] font-semibold tracking-[.1em]">GO BACK</button>
+        <button id="confirmButton" type="button" class="sequence-button px-5 text-[10px] font-semibold tracking-[.1em]">CONFIRM &amp; START</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      const duration = 10000;
+      const stage = document.getElementById('stage');
+      const startButton = document.getElementById('startButton');
+      const cancelButton = document.getElementById('cancelButton');
+      const resetButton = document.getElementById('resetButton');
+      const confirmDialog = document.getElementById('confirmDialog');
+      const confirmButton = document.getElementById('confirmButton');
+      const dismissButton = document.getElementById('dismissButton');
+      const timerValue = document.getElementById('timerValue');
+      const timerLabel = document.getElementById('timerLabel');
+      const ringProgress = document.getElementById('ringProgress');
+      const progressFill = document.getElementById('progressFill');
+      const progressText = document.getElementById('progressText');
+      const progressBar = document.querySelector('[role="progressbar"]');
+      const progressTarget = document.getElementById('progressTarget');
+      const stateBadge = document.getElementById('stateBadge');
+      const modeValue = document.getElementById('modeValue');
+      const liveStatus = document.getElementById('liveStatus');
+      const buttonHint = document.getElementById('buttonHint');
+      const particles = document.getElementById('particles');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let state = 'ready';
+      let intervalId = null;
+      let completionTimeout = null;
+      let lastAnnouncedSecond = null;
+
+      // Decorative fragments are CSS-only and never interact with the page or environment.
+      for (let i = 0; i < 20; i += 1) {
+        const angle = (Math.PI * 2 * i) / 20 + (Math.random() - .5) * .22;
+        const distance = 76 + Math.random() * 104;
+        const particle = document.createElement('span');
+        particle.className = 'particle';
+        particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+        particle.style.setProperty('--rot', `${Math.round(Math.random() * 540 - 270)}deg`);
+        particle.style.setProperty('--size', `${3 + Math.random() * 5}px`);
+        particle.style.setProperty('--particle-color', i % 4 === 0 ? '#ffd08e' : (i % 3 === 0 ? '#ff735e' : '#ffa477'));
+        particles.appendChild(particle);
+      }
+
+      function setProgress(percent) {
+        const clamped = Math.max(0, Math.min(100, percent));
+        progressFill.style.width = `${clamped}%`;
+        progressText.textContent = `${Math.round(clamped)}%`;
+        progressBar.setAttribute('aria-valuenow', String(Math.round(clamped)));
+        ringProgress.style.strokeDashoffset = String(678.6 * (1 - clamped / 100));
+      }
+
+      function setBadge(text, active = false) {
+        stateBadge.textContent = text;
+        stateBadge.className = active
+          ? 'mono rounded-md border border-red-400/25 bg-red-500/[.08] px-2.5 py-1 text-[9px] tracking-[.1em] text-red-300'
+          : 'mono rounded-md border border-slate-700/70 bg-slate-900/70 px-2.5 py-1 text-[9px] tracking-[.1em] text-slate-400';
+      }
+
+      function openConfirmation() {
+        if (state !== 'ready' || confirmDialog.open) return;
+        confirmDialog.showModal();
+      }
+
+      function startCountdown() {
+        if (state !== 'ready') return;
+        state = 'counting';
+        stage.classList.remove('destroyed');
+        stage.classList.add('counting');
+        startButton.disabled = true;
+        startButton.innerHTML = '<span class="inline-block h-2 w-2 rounded-full bg-current" aria-hidden="true"></span> SEQUENCE RUNNING';
+        cancelButton.hidden = false;
+        cancelButton.disabled = false;
+        resetButton.hidden = true;
+        timerLabel.textContent = 'TIME REMAINING';
+        stateBadge.textContent = 'COUNTDOWN ACTIVE';
+        stateBadge.className = 'mono rounded-md border border-red-400/25 bg-red-500/[.08] px-2.5 py-1 text-[9px] tracking-[.1em] text-red-300';
+        modeValue.textContent = 'COUNTDOWN';
+        progressTarget.textContent = 'SEQUENCE ACTIVE';
+        buttonHint.textContent = 'Sequence in progress. Cancel any time to return to standby.';
+        liveStatus.textContent = 'Countdown started. Ten seconds remaining. You may cancel at any time.';
+        lastAnnouncedSecond = 10;
+        const endAt = Date.now() + duration;
+
+        const tick = () => {
+          const remaining = Math.max(0, endAt - Date.now());
+          const seconds = Math.ceil(remaining / 1000);
+          const elapsedPercent = ((duration - remaining) / duration) * 100;
+          timerValue.textContent = String(seconds).padStart(2, '0');
+          setProgress(elapsedPercent);
+          if (seconds !== lastAnnouncedSecond && seconds > 0) {
+            liveStatus.textContent = `${seconds} seconds remaining. You may cancel at any time.`;
+            lastAnnouncedSecond = seconds;
+          }
+          if (remaining <= 0) {
+            clearInterval(intervalId);
+            intervalId = null;
+            finishCountdown();
+          }
+        };
+        tick();
+        intervalId = window.setInterval(tick, 100);
+      }
+
+      function finishCountdown() {
+        state = 'animating';
+        stage.classList.remove('counting');
+        stage.classList.add('destroyed');
+        timerValue.textContent = '00';
+        timerLabel.textContent = 'SIMULATION';
+        setProgress(100);
+        stateBadge.textContent = 'SIMULATED IMPACT';
+        stateBadge.className = 'mono rounded-md border border-amber-300/25 bg-amber-400/[.08] px-2.5 py-1 text-[9px] tracking-[.1em] text-amber-200';
+        modeValue.textContent = 'VISUAL EFFECT';
+        progressTarget.textContent = 'SIMULATION COMPLETE';
+        cancelButton.hidden = true;
+        buttonHint.textContent = 'Visual sequence complete. Reset to run the demo again.';
+        liveStatus.textContent = 'Countdown complete. Playing a harmless visual simulation.';
+        completionTimeout = window.setTimeout(() => {
+          state = 'complete';
+          resetButton.hidden = false;
+          stateBadge.textContent = 'DEMO COMPLETE';
+          stateBadge.className = 'mono rounded-md border border-emerald-300/25 bg-emerald-400/[.06] px-2.5 py-1 text-[9px] tracking-[.1em] text-emerald-200';
+          liveStatus.textContent = 'Simulation complete. No real-world effects. Reset is available.';
+          resetButton.focus();
+        }, reducedMotion.matches ? 120 : 1150);
+      }
+
+      function cancelCountdown() {
+        if (state !== 'counting') return;
+        clearInterval(intervalId);
+        intervalId = null;
+        state = 'ready';
+        stage.classList.remove('counting', 'destroyed');
+        timerValue.textContent = '--';
+        timerLabel.textContent = 'SYSTEM READY';
+        setProgress(0);
+        startButton.disabled = false;
+        startButton.innerHTML = '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2.5v7m0 0 4-4m-4 4-4-4M4 11.5v3A2.5 2.5 0 0 0 6.5 17h7a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>INITIATE SEQUENCE';
+        cancelButton.hidden = true;
+        setBadge('STANDBY');
+        modeValue.textContent = 'CONTAINED';
+        progressTarget.textContent = 'AWAITING START';
+        buttonHint.textContent = 'Countdown cancelled. Everything is safe; you can start again.';
+        liveStatus.textContent = 'Countdown cancelled. System safe and ready.';
+        startButton.focus();
+      }
+
+      function resetDemo() {
+        clearInterval(intervalId);
+        clearTimeout(completionTimeout);
+        intervalId = null;
+        completionTimeout = null;
+        state = 'ready';
+        stage.classList.remove('counting', 'destroyed');
+        timerValue.textContent = '--';
+        timerLabel.textContent = 'SYSTEM READY';
+        setProgress(0);
+        startButton.disabled = false;
+        startButton.innerHTML = '<svg aria-hidden="true" width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2.5v7m0 0 4-4m-4 4-4-4M4 11.5v3A2.5 2.5 0 0 0 6.5 17h7a2.5 2.5 0 0 0 2.5-2.5v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>INITIATE SEQUENCE';
+        cancelButton.hidden = true;
+        resetButton.hidden = true;
+        setBadge('STANDBY');
+        modeValue.textContent = 'CONTAINED';
+        progressTarget.textContent = 'AWAITING START';
+        buttonHint.textContent = 'You’ll be asked to confirm before the countdown begins.';
+        liveStatus.textContent = 'Demo reset. System ready. Visual simulation only.';
+        startButton.focus();
+      }
+
+      startButton.addEventListener('click', openConfirmation);
+      confirmButton.addEventListener('click', () => {
+        confirmDialog.close();
+        startCountdown();
+      });
+      dismissButton.addEventListener('click', () => confirmDialog.close());
+      confirmDialog.addEventListener('cancel', (event) => {
+        event.preventDefault();
+        confirmDialog.close();
+      });
+      cancelButton.addEventListener('click', cancelCountdown);
+      resetButton.addEventListener('click', resetDemo);
+    })();
+  </script>
+</body>
+</html>

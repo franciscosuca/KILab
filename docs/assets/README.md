@@ -13,3 +13,10 @@ with these stable filenames and reference them from `index.html`:
 
 Until they are supplied, `index.html` renders clearly-labelled figure placeholders
 (no fabricated, downloaded, or hot-linked media, per the specification).
+
+## `logos/`
+
+Slide 9 logos, downloaded from each project's official website or GitHub
+organisation avatar and stored locally so the deck works offline. They are
+trademarks of their respective owners. `pi.svg` has its dark-mode style
+removed so it stays visible on the light background.
