@@ -1,0 +1,12 @@
+{
+  "defaults": {
+    "runtime": "lmstudio",
+    "ctx": 8192,
+    "reasoning": "off"
+  },
+  "models": {
+    "openai/sandepa_ai_coder_435m_small_moe": {
+      "ctx": 512
+    }
+  }
+}
