@@ -1,0 +1,6 @@
+{
+  "id": "m1-8gb",
+  "chip": "Apple M1",
+  "ram_gb": 8,
+  "notes": "Runs recorded before machine tagging was introduced; OS and runtime versions were not captured."
+}
