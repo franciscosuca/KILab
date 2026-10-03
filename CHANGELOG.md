@@ -1,3 +1,13 @@
+## [2.6.0](https://github.com/franciscosuca/KILab/compare/v2.5.0...v2.6.0) (2026-10-03)
+
+### Features
+
+* **reorganize sctructure of the project and publication of landing page for the project.:** feat: reorganize sctructure of the project and publication of landing page for the project. ([d0cd669](https://github.com/franciscosuca/KILab/commit/d0cd669b07b4f64d854133755da49516b4ad7bbf))
+
+### Bug Fixes
+
+* **benchmark page and context:** fix: benchmark page and context ([1a41d29](https://github.com/franciscosuca/KILab/commit/1a41d299345d06b9aa7f9a8b3a4842d7c2396b47))
+
 ## [2.5.0](https://github.com/franciscosuca/KILab/compare/v2.4.0...v2.5.0) (2026-09-30)
 
 ### Features
