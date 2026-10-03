@@ -1,0 +1,33 @@
+{
+  "providers": {
+    "lmstudio": {
+      "baseUrl": "http://localhost:11440/v1",
+      "api": "openai-completions",
+      "apiKey": "lm-studio",
+      "models": [
+        { "id": "openai/gpt-oss-20b" },
+        { "id": "qwen/qwen3.8-27b" },
+        { "id": "qwen/qwen3.5-9b" },
+        { "id": "qwen/qwen3.6-35b-a3b" },
+        { "id": "google/gemma-4-26b-a4b-qat" },
+        { "id": "qwen3.8-27b-splash" },
+        { "id": "qwq-deepseek-r1-skyt1-flash-lightest-32b-mlx" },
+        { "id": "deepseek-moe-16b-chat-mlx" }
+      ]
+    },
+    "omlx": {
+      "baseUrl": "http://127.0.0.1:8000/v1",
+      "api": "openai-completions",
+      "apiKey": "omlx",
+      "models": [
+        { "id": "gpt-oss-20b-MXFP4-Q8" },
+        { "id": "Qwen3.8-27B-MLX-4bit" },
+        { "id": "Qwen3.5-9B-MLX-4bit" },
+        { "id": "gemma-4-26B-A4B-it-QAT-MLX-4bit" },
+        { "id": "QwQ-DeepSeek-R1-SkyT1-Flash-Lightest-32B-mlx-4Bit" },
+        { "id": "deepseek-moe-16b-chat-mlx-4Bit" },
+        { "id": "gemma-4-12B-it-MLX-8bit" }
+      ]
+    }
+  }
+}

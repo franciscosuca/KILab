@@ -30,6 +30,16 @@ check test -x "$SCRIPT_DIR/install-pack.sh"
 check bash -n "$SCRIPT_DIR/install-pack.sh"
 check test -x "$SCRIPT_DIR/sync-pi-models.py"
 check python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$SCRIPT_DIR/sync-pi-models.py"
+check test -x "$SCRIPT_DIR/pi-config.py"
+check python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$SCRIPT_DIR/pi-config.py"
+check test -f "$CATALOG/adapters/pi/packages.txt"
+
+pi_catalog_provider() {
+  python3 "$SCRIPT_DIR/pi-config.py" list-models "$CATALOG/adapters/pi/models.json" \
+    | awk -F '\t' -v provider="$1" '$1 == provider { found = 1 } END { exit !found }'
+}
+check pi_catalog_provider lmstudio
+check pi_catalog_provider omlx
 
 while IFS= read -r -d '' file; do
   check grep -q '^---[[:space:]]*$' "$file"
