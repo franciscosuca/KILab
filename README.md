@@ -2,45 +2,12 @@
 
 KILab is a versioned coding-agent pack for AI-assisted software development, with optional local-model benchmarking material for GitHub Copilot, Claude Code, and Pi.
 
-## Quick start: coding-agent-pack
+## What's in this repo
 
-Clone the source pack and install all Copilot agents and skills into the current repository:
-
-```bash
-git clone https://github.com/franciscosuca/KILab.git "$HOME/kilab"
-
-"$HOME/kilab/coding-agent-pack/scripts/install-pack.sh" \
-  --target "$PWD" \
-  --harness copilot \
-  --agents all \
-  --skills all
-```
-
-Install only selected resources with comma-separated names:
-
-```bash
-"$HOME/kilab/coding-agent-pack/scripts/install-pack.sh" \
-  --target "$PWD" \
-  --harness copilot \
-  --agents test-oracle,blind-implementer \
-  --skills feature-planning
-```
-
-See [`coding-agent-pack/README.md`](coding-agent-pack/README.md) for Claude and Pi installation, project/global scope, updates, and validation.
-
-## Local model evaluation
-
-The benchmark material is optional and independent from the coding-agent pack. It uses `uv`, LM Studio, and Docker for repeatable local model evaluations and sandboxed code execution.
-
-### What's included
-
-- [Inspect AI + LM Studio guide](benchmarks/inspect-benchmark/README.md) — benchmark setup and execution instructions.
-- [Benchmark results](benchmarks/inspect-benchmark/results.md) — recorded HumanEval results and throughput notes.
-- [Custom benchmark](benchmarks/custom-benchmark/README.md) — a small repeatable VS Code/Copilot model comparison.
-
-### Presentation app
-
-- [Blind LLM Arena](apps/blind-llm-arena/README.md) — a standalone, single-file app for the v3 talk's anonymous code challenge and audience vote. Open `apps/blind-llm-arena/index.html` to run its mock demo, or configure live model endpoints.
+- [docs](docs/README.md) — the "Frontier Quality on Local Hardware" slide deck on running AI models on your own computer.
+- [coding-agent-pack](coding-agent-pack/README.md) — reusable agents and skills you can install for GitHub Copilot, Claude Code, and Pi.
+- [benchmarks](benchmarks/README.md) — Inspect AI benchmarks for local models, with results saved per machine.
+- [experiments](experiments/README.md) — prompt-based experiments and the Blind LLM Arena app for comparing models side by side.
 
 ## License
 

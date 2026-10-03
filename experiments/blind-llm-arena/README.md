@@ -12,7 +12,7 @@ Requirements:
 - GitHub Copilot CLI installed and authenticated if you want Copilot models
 
 ```bash
-cd apps/blind-llm-arena
+cd benchmarks/blind-llm-arena
 npm install
 npm start
 ```
@@ -44,10 +44,19 @@ Nothing is selected by default — check the models to include before each run. 
 
 Local models are prompted through their API (`curl` for unauthenticated requests and the built-in HTTP client when a bearer key is needed). Copilot models are prompted through the official SDK's authenticated Copilot CLI runtime, with tools denied. The server writes every completed response to a mode-`0600` file in a uniquely named operating-system temporary directory, reads that artifact for display, and deletes the directory after one hour.
 
-Generated HTML can be opened in each result's **Preview** tab. Previews use sandboxed iframes, and response source is rendered as text.
+Generated HTML can be opened and interacted with in each result's **Preview** tab. Switching between **Response** and **Preview** preserves the running page rather than reloading it. Previews size to their content (up to 900 px) so controls are not clipped by the result card. Loading delays and script errors are displayed above the preview.
+
+Previews use sandboxed iframes without access to the parent page or model APIs. Only the Tailwind CDN, Lucide's `@latest` script, and canvas-confetti `1.6.0` script are allowed; other external scripts are blocked and reported. Response source is rendered as text.
 
 ## Validate
 
 ```bash
 npm test
+```
+
+Interactive preview regressions are tested in Chromium and Firefox without calling real models:
+
+```bash
+npx playwright install chromium firefox
+npm run test:browser
 ```

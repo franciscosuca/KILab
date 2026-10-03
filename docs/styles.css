@@ -80,6 +80,65 @@ h1, h2 {
 }
 h1 { font-size: clamp(2.75rem, 6.5vw, 4.75rem); }
 h2 { font-size: clamp(2rem, 4.4vw, 3.2rem); margin-bottom: clamp(1.2rem, 3vh, 2rem); }
+h3.subhead {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -.01em;
+  margin-top: clamp(1.8rem, 4vh, 2.6rem);
+}
+h3.subhead + .rows { margin-top: .9rem; }
+
+/* Compact dense-vs-MoE parameter map, inspired by the field-guide comparison. */
+.model-diagram {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(.8rem, 3vw, 2.5rem);
+  margin-top: .25rem;
+}
+.model-diagram-mode {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: .65rem;
+}
+.model-diagram-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+}
+.model-diagram-heading h3 {
+  font-family: var(--serif);
+  font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.model-diagram-heading span {
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: .58rem;
+  letter-spacing: .08em;
+  line-height: 1.4;
+  text-align: right;
+  text-transform: uppercase;
+}
+.model-tiles {
+  display: grid;
+  width: min(100%, 12rem);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: .3rem;
+  margin-top: .65rem;
+}
+.model-tile {
+  aspect-ratio: 1.45;
+  border: 1px solid #a8a89e;
+}
+.model-tile.is-on {
+  border-color: #b8c2b6;
+  background: #b8c2b6;
+}
+.model-diagram + .rows { margin-top: .9rem; }
 
 .lede {
   font-family: var(--serif);
@@ -233,6 +292,33 @@ figcaption {
 .spec td { white-space: nowrap; }
 .spec td:nth-child(2), .spec td:last-child { white-space: normal; }
 
+/* slide 9: narrow "what it does" column, logo list for examples */
+.spec.stack th, .spec.stack td { padding-top: 1rem; padding-bottom: 1rem; }
+.spec td.does { width: 15rem; max-width: 15rem; padding-right: 2rem; }
+.tools {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 9rem);
+  gap: .7rem 1.6rem;
+}
+.tools a {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+.tools img {
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+  border-radius: 4px;
+  filter: grayscale(1) contrast(1.2) brightness(.85);
+  opacity: .85;
+  transition: filter .2s, opacity .2s;
+}
+.tools a:hover img, .tools a:focus-visible img { filter: none; opacity: 1; }
+
 /* ---------- placeholders & links ---------- */
 
 .ph {
@@ -318,9 +404,16 @@ a:focus-visible {
 
 @media (max-width: 640px) {
   .rows li { grid-template-columns: 1fr; gap: .3rem; padding: 1rem .1rem; }
+  .model-diagram { gap: .8rem; }
+  .model-diagram-heading { align-items: flex-start; flex-direction: column; gap: .25rem; }
+  .model-diagram-heading h3 { font-size: 1.05rem; }
+  .model-diagram-heading span { font-size: .52rem; text-align: left; }
+  .model-tiles { gap: .2rem; }
   .hud { right: 1rem; bottom: 1rem; }
   .hint { display: none; }
   .spec { font-size: .8rem; }
+  .spec td.does { width: auto; max-width: 10rem; padding-right: 1rem; }
+  .tools { grid-template-columns: max-content; }
 }
 
 @media (prefers-reduced-motion: reduce) {

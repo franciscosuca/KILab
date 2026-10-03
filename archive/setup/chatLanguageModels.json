@@ -1,0 +1,36 @@
+[
+  {
+    "name": "LM Studio - Qwen 2.5 Coder 14B",
+    "vendor": "customendpoint",
+    "apiKey": "lm-studio",
+    "apiType": "chat-completions",
+    "models": [
+      {
+        "id": "qwen/qwen2.5-coder-14b",
+        "name": "qwen/qwen2.5-coder-14b",
+        "url": "http://127.0.0.1:11440/v1",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 128000,
+        "maxOutputTokens": 16000
+      }
+    ]
+  },
+  {
+    "name": "LM Studio - Qwen 3.5 9B",
+    "vendor": "customendpoint",
+    "apiKey": "lm-studio",
+    "apiType": "chat-completions",
+    "models": [
+      {
+        "id": "qwen/qwen3.5-9b",
+        "name": "qwen/qwen3.5-9b",
+        "url": "http://127.0.0.1:11440/v1",
+        "toolCalling": true,
+        "vision": true,
+        "maxInputTokens": 12800,
+        "maxOutputTokens": 16000
+      }
+    ]
+  }
+]

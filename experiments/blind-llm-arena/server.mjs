@@ -459,7 +459,7 @@ export async function handleRequest(request, response) {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Length": html.length,
         "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "default-src 'self' https://cdn.tailwindcss.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline'; frame-src 'self'; connect-src 'self'",
+        "Content-Security-Policy": "default-src 'self' https://cdn.tailwindcss.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com/lucide@latest https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js; style-src 'self' 'unsafe-inline'; frame-src 'self'; connect-src 'self'",
       });
       response.end(html);
       return;
