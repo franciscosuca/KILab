@@ -1,7 +1,7 @@
 # Frontier Quality on Local Hardware — `docs/`
 
 A 12-slide, self-contained HTML/CSS/JS slide deck built to the specification in
-[`prompt.md`](../prompt.md) (the narrative and generation spec distilled from
+[`prompt.md`](https://github.com/franciscosuca/KILab/blob/c3bdffe7ba65c903ee7a0a44059f5f4313140809/prompt.md) (the narrative and generation spec distilled from
 `BLOGS/Local LLM.md`, v3 / v3.1). It matches the restrained editorial feel of
 [`kimik3/`](../experiments/presentation-decks/kimik3/).
 
@@ -57,4 +57,4 @@ Drop those files into `assets/` and swap the `.placeholder` block for an `<img>`
 in `index.html` to finish the deck. See [`assets/README.md`](assets/README.md).
 
 All model weights, KV-cache, and tokens-per-second figures are **provisional
-estimates** as defined in `prompt.md`, and are labelled as such in the deck.
+estimates** as defined in [`prompt.md`](https://github.com/franciscosuca/KILab/blob/c3bdffe7ba65c903ee7a0a44059f5f4313140809/prompt.md), and are labelled as such in the deck.
