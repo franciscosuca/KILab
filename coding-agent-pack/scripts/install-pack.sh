@@ -193,7 +193,7 @@ default_extensions() {
 
 # Catalog models, one "provider<TAB>baseUrl<TAB>model id" line each (requires python3).
 pi_models() {
-  python3 "$PI_CONFIG" list-models "$PI_ADAPTER/models.json"
+  python3 "$PI_CONFIG" list-models "$MODELS_CATALOG"
 }
 
 pi_model_providers() {
@@ -333,8 +333,6 @@ PY
   fi
   MODELS_CATALOG="$MODEL_SCAN_DIR/models.json"
   MODELS_SOURCE=scan
-  printf '\nModels discovered on this machine:\n'
-  print_pi_models all | sed 's/^/  /'
 }
 
 normalize_spec() {
@@ -529,23 +527,31 @@ global (all projects of your user)" "${SCOPE:-project}"
   EXTENSIONS_SET=1
 
   if have_python; then
-    choose_one "Where should the Pi model choices come from?" "template (Use the static model IDs bundled with this pack)
-scan (Discover models currently available on this machine)" template
-    MODELS_SOURCE=$ANSWER
-    if [ "$MODELS_SOURCE" = scan ]; then
-      scan_pi_model_catalog
-      printf '\n'
+    choose_one "Do you want to use local LLM providers with Pi (LM Studio / oMLX)?" "yes (Add local model IDs to Pi's models.json)
+no (Use Pi's built-in providers via /login instead)" yes
+    if [ "$ANSWER" = no ]; then
+      MODELS_SPEC=none
+      printf '\nSkipping local model setup.\n'
+      printf 'Inside Pi, run /login to connect a built-in provider subscription or API key.\n'
     else
-      printf '\nLocal models for Pi (static template catalog):\n'
-      print_pi_models all | sed 's/^/  /'
-    fi
-    print_models_warning
-    default=$MODELS_SPEC
-    [ "$MODELS_SET" -eq 1 ] || default=all
-    choose_many "Which model providers do you want to add to Pi's models.json?" "$(pi_model_menu)" "$(normalize_spec "$default")"
-    MODELS_SPEC=$ANSWER
-    if [ "$MODELS_SOURCE" = scan ] && [ "$MODELS_SPEC" = all ]; then
-      MODELS_SPEC=$(pi_model_providers | tr '\n' ',' | sed 's/,$//')
+      choose_one "Where should the Pi model choices come from?" "template (Use the static model IDs bundled with this pack)
+scan (Discover models currently available on this machine)" template
+      MODELS_SOURCE=$ANSWER
+      if [ "$MODELS_SOURCE" = scan ]; then
+        scan_pi_model_catalog
+        printf '\n'
+      else
+        printf '\nLocal models for Pi (static template catalog):\n'
+        print_pi_models all | sed 's/^/  /'
+      fi
+      print_models_warning
+      default=$MODELS_SPEC
+      [ "$MODELS_SET" -eq 1 ] || default=all
+      choose_many "Which model providers do you want to add to Pi's models.json?" "$(pi_model_menu)" "$(normalize_spec "$default")"
+      MODELS_SPEC=$ANSWER
+      if [ "$MODELS_SOURCE" = scan ] && [ "$MODELS_SPEC" = all ]; then
+        MODELS_SPEC=$(pi_model_providers | tr '\n' ',' | sed 's/,$//')
+      fi
     fi
   else
     printf '\nSkipping Pi models: python3 3.7 or newer is required to update models.json.\n'
