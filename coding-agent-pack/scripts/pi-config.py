@@ -107,9 +107,14 @@ def merge_models(args: argparse.Namespace) -> int:
 
         changes = []
         for key, value in source.items():
-            if key != "models" and key not in target:
+            if key == "models":
+                continue
+            if key not in target:
                 target[key] = copy.deepcopy(value)
                 changes.append(f"+{key}")
+            elif key == "baseUrl" and args.update_base_url and target[key] != value:
+                target[key] = copy.deepcopy(value)
+                changes.append("baseUrl updated")
         present = set(model_ids(models))
         added = [model for model in source["models"] if isinstance(model, dict) and model.get("id") not in present]
         models.extend(copy.deepcopy(added))
@@ -164,6 +169,11 @@ def main() -> int:
     command = commands.add_parser("merge-models", help="Add catalog providers and models to a Pi models.json")
     command.add_argument("--dry-run", action="store_true", help="Show changes without writing the config")
     command.add_argument("--label", help="Config path to show in messages")
+    command.add_argument(
+        "--update-base-url",
+        action="store_true",
+        help="Update an existing provider's Base URL to the source catalog value",
+    )
     command.add_argument("catalog", type=Path, help="Pack models.json catalog")
     command.add_argument("config", type=Path, help="Pi models.json to update (created if missing)")
     command.add_argument("providers", nargs="+", help="Catalog providers to add")

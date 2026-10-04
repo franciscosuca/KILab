@@ -201,10 +201,124 @@ print_pi_models() {
   '
 }
 
+pi_model_base_url() {
+  local configured
+  configured=$(python3 - "$(pi_target_models_path)" "$1" <<'PY'
+import json
+import sys
+from pathlib import Path
+from urllib.parse import urlsplit
+
+try:
+    providers = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")).get("providers", {})
+    candidate = providers.get(sys.argv[2], {}).get("baseUrl")
+    parsed = urlsplit(candidate) if isinstance(candidate, str) else None
+    if parsed and parsed.hostname in {"localhost", "127.0.0.1", "::1"} and parsed.port:
+        print(candidate)
+except (OSError, json.JSONDecodeError, ValueError):
+    pass
+PY
+)
+  if [ -n "$configured" ]; then
+    printf '%s' "$configured"
+  else
+    pi_models | awk -F '\t' -v provider="$1" '$1 == provider { print $2; exit }'
+  fi
+}
+
+pi_target_models_path() {
+  if [ "$SCOPE" = project ]; then
+    printf '%s/.pi/models.json' "$TARGET"
+  else
+    printf '%s/models.json' "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+  fi
+}
+
+url_port() {
+  python3 -c 'from urllib.parse import urlsplit; import sys; print(urlsplit(sys.argv[1]).port or "")' "$1"
+}
+
 print_models_warning() {
   printf 'WARNING: The installer only adds model IDs to models.json; it does not download models.\n'
   printf '         Download each model manually in LM Studio (Discover tab or "lms get") or oMLX\n'
   printf '         (model downloader in the /admin dashboard) before selecting it in Pi.\n'
+}
+
+scan_pi_model_catalog() {
+  local options provider label default_url default_port port
+  local -a sync_args
+
+  printf '\nLive scanning supports only LM Studio and oMLX. Start each selected server before continuing.\n'
+  options='both (LM Studio and oMLX)
+lmstudio (LM Studio only)
+omlx (oMLX only)'
+  choose_one "Which local servers should I scan?" "$options" both
+  case "$ANSWER" in
+    both) SCAN_PROVIDER_SPEC=all ;;
+    *) SCAN_PROVIDER_SPEC=$ANSWER ;;
+  esac
+
+  MODEL_SCAN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/kilab-pi-model-scan.XXXXXX") \
+    || die 'could not create a temporary model-scan directory'
+  chmod 700 "$MODEL_SCAN_DIR"
+  python3 - "$PI_ADAPTER/models.json" "$MODEL_SCAN_DIR/models.json" "$SCAN_PROVIDER_SPEC" "$(pi_target_models_path)" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source_path, destination_path, selected, existing_path = sys.argv[1:]
+config = json.loads(Path(source_path).read_text(encoding="utf-8"))
+providers = config.get("providers", {})
+names = ["lmstudio", "omlx"] if selected == "all" else selected.split(",")
+try:
+    existing = json.loads(Path(existing_path).read_text(encoding="utf-8")).get("providers", {})
+except (OSError, json.JSONDecodeError):
+    existing = {}
+config["providers"] = {name: providers[name] for name in names}
+for name in names:
+    current = existing.get(name)
+    if isinstance(current, dict) and isinstance(current.get("apiKey"), str):
+        config["providers"][name]["apiKey"] = current["apiKey"]
+Path(destination_path).write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+PY
+
+  sync_args=(--config "$MODEL_SCAN_DIR/models.json" --require-api)
+  for provider in lmstudio omlx; do
+    case ",$SCAN_PROVIDER_SPEC," in
+      ,all,|*,"$provider",*) ;;
+      *) continue ;;
+    esac
+    default_url=$(pi_model_base_url "$provider")
+    default_port=$(url_port "$default_url")
+    [ -n "$default_port" ] || die "could not determine the default $provider port from the template"
+    if [ "$provider" = lmstudio ]; then label='LM Studio'; else label='oMLX'; fi
+    printf '\n%s endpoint shown in the template: %s\n' "$label" "$default_url"
+    while :; do
+      ask "$label server port [$default_port]: "
+      port=${ANSWER:-$default_port}
+      if [[ "$port" =~ ^[0-9]{1,5}$ ]] && ((10#$port >= 1 && 10#$port <= 65535)); then
+        break
+      fi
+      printf 'Enter a port from 1 to 65535.\n'
+    done
+    if [ "$provider" = lmstudio ]; then
+      default_url="http://localhost:$port/v1"
+      LMSTUDIO_SCAN_URL=$default_url
+    else
+      default_url="http://127.0.0.1:$port/v1"
+      OMLX_SCAN_URL=$default_url
+    fi
+    sync_args+=(--provider "$provider" --base-url "$provider=$default_url")
+  done
+
+  printf '\nQuerying the selected local server APIs...\n'
+  if ! python3 "$PI_MODEL_SYNC" "${sync_args[@]}"; then
+    die 'live model scan failed; check that the selected server(s) are running and the ports/API keys are correct'
+  fi
+  MODELS_CATALOG="$MODEL_SCAN_DIR/models.json"
+  MODELS_SOURCE=scan
+  printf '\nModels discovered on this machine:\n'
+  print_pi_models all | sed 's/^/  /'
 }
 
 normalize_spec() {
@@ -390,7 +504,7 @@ global (all projects of your user)" "${SCOPE:-project}"
   if [ -n "$options" ]; then
     default=$EXTENSIONS_SPEC
     [ "$EXTENSIONS_SET" -eq 1 ] || default=$(default_extensions)
-    choose_many "Which Pi extensions do you want to install?" "$options" "$default"
+    choose_many "Which optional Pi extensions/packages do you want to install?" "$options" "$default"
     EXTENSIONS_SPEC=$ANSWER
     if [ "$EXTENSIONS_SPEC" = "all" ] && ! have_python; then
       EXTENSIONS_SPEC=$(default_extensions)
@@ -399,14 +513,24 @@ global (all projects of your user)" "${SCOPE:-project}"
   EXTENSIONS_SET=1
 
   if have_python; then
-    printf '\nLocal models for Pi (catalog/adapters/pi/models.json):\n'
-    print_pi_models all | sed 's/^/  /'
-    printf '\n'
+    choose_one "Where should the Pi model choices come from?" "template (Use the static model IDs bundled with this pack)
+scan (Discover models currently available on this machine)" template
+    MODELS_SOURCE=$ANSWER
+    if [ "$MODELS_SOURCE" = scan ]; then
+      scan_pi_model_catalog
+      printf '\n'
+    else
+      printf '\nLocal models for Pi (static template catalog):\n'
+      print_pi_models all | sed 's/^/  /'
+    fi
     print_models_warning
     default=$MODELS_SPEC
     [ "$MODELS_SET" -eq 1 ] || default=all
     choose_many "Which model providers do you want to add to Pi's models.json?" "$(pi_model_menu)" "$(normalize_spec "$default")"
     MODELS_SPEC=$ANSWER
+    if [ "$MODELS_SOURCE" = scan ] && [ "$MODELS_SPEC" = all ]; then
+      MODELS_SPEC=$(pi_model_providers | tr '\n' ',' | sed 's/,$//')
+    fi
   else
     printf '\nSkipping Pi models: python3 3.7 or newer is required to update models.json.\n'
     MODELS_SPEC=none
@@ -445,13 +569,48 @@ print_summary() {
   printf '  Agents:      %s\n' "$AGENTS_SPEC"
   printf '  Skills:      %s\n' "$SKILLS_SPEC"
   if [ "$HARNESS" = "pi" ]; then
-    printf '  Extensions:  %s\n' "$EXTENSIONS_SPEC"
-    printf '  Models:      %s\n' "$MODELS_SPEC"
+    printf '  Pi additions: %s\n' "$EXTENSIONS_SPEC"
+    if [ "$SCOPE" = "project" ]; then
+      printf '  Model adapter: local-models (automatic)\n'
+    fi
+    printf '  Models:      %s (%s source)\n' "$MODELS_SPEC" "$MODELS_SOURCE"
   fi
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '  Dry run:     no files are written\n'
   fi
+  if [ "$MODELS_SOURCE" = scan ]; then
+    printf '\nThe one-time command below uses the static template model list; live scan results are machine-specific.\n'
+  fi
+  printf '\n'
+  print_overwrite_note
   printf '\nEquivalent one-time command:\n  %s\n\n' "$(equivalent_command)"
+}
+
+# Name of the instructions file the installer writes for the selected harness.
+instructions_label() {
+  case "$HARNESS" in
+    copilot) printf 'copilot-instructions.md' ;;
+    claude) printf 'CLAUDE.md' ;;
+    *) printf 'APPEND_SYSTEM.md' ;;
+  esac
+}
+
+# Resource files are replaced rather than merged; say so before asking to proceed.
+print_overwrite_note() {
+  local resources
+  case "$HARNESS" in
+    copilot) resources='selected agents and skills' ;;
+    claude) resources='selected agents and commands' ;;
+    *) resources='selected agents, skills, and extensions' ;;
+  esac
+  printf 'WARNING: existing files at the destination are overwritten, not merged:\n'
+  printf '         the %s instructions file and %s.\n' "$(instructions_label)" "$resources"
+  if [ "$HARNESS" = pi ]; then
+    printf '         settings.json and models.json are merged. Nothing is ever deleted.\n'
+  else
+    printf '         Nothing is ever deleted.\n'
+  fi
+  return 0
 }
 
 while [ "$#" -gt 0 ]; do
@@ -533,8 +692,9 @@ if [ "$LIST_ONLY" -eq 1 ]; then
   printf '\nSkills:\n'
   find "$CORE_SKILLS" -mindepth 1 -maxdepth 1 -type d -print \
     | sed "s#^$CORE_SKILLS/##" | sort
-  printf '\nPi extensions (--extensions):\n'
+  printf '\nOptional Pi extensions/packages (--extensions):\n'
   pi_extension_menu
+  printf 'Project-scoped installs add local-models support automatically.\n'
   printf '\nPi models (--models; download them manually before use):\n'
   if have_python; then
     print_pi_models all
@@ -652,26 +812,36 @@ log() {
   printf '%s\n' "$*"
 }
 
+# write_label <destination> <fresh-label> <existing-label>: must be evaluated BEFORE writing.
+# Lets every writer announce when it is about to replace something that already exists.
+write_label() {
+  if [ -e "$1" ]; then printf '%s' "$3"; else printf '%s' "$2"; fi
+}
+
 copy_file() {
-  local source=$1 destination=$2
+  local source=$1 destination=$2 planned done_verb
+  planned=$(write_label "$destination" COPY REPLACE)
   if [ "$DRY_RUN" -eq 1 ]; then
-    log "COPY $source -> $destination"
+    log "$planned $source -> $destination"
     return
   fi
+  done_verb=$(write_label "$destination" installed replaced)
   mkdir -p "$(dirname -- "$destination")"
   cp -p "$source" "$destination"
-  log "installed ${destination#$TARGET/}"
+  log "$done_verb ${destination#$TARGET/}"
 }
 
 copy_tree() {
-  local source=$1 destination=$2
+  local source=$1 destination=$2 planned done_verb
+  planned=$(write_label "$destination" "COPY TREE" "REPLACE TREE")
   if [ "$DRY_RUN" -eq 1 ]; then
-    log "COPY TREE $source -> $destination"
+    log "$planned $source -> $destination"
     return
   fi
+  done_verb=$(write_label "$destination" installed updated)
   mkdir -p "$destination"
   cp -pR "$source/." "$destination/"
-  log "installed ${destination#$TARGET/}"
+  log "$done_verb ${destination#$TARGET/}"
 }
 
 selected() {
@@ -758,15 +928,16 @@ claude_agents() {
 }
 
 render_claude_agent() {
-  local source=$1 destination=$2 name description agents_line argument_line
+  local source=$1 destination=$2 name description agents_line argument_line done_verb
   name=$(frontmatter_line "$source" name || true)
   description=$(frontmatter_line "$source" description || true)
   argument_line=$(frontmatter_line "$source" argument-hint || true)
   agents_line=$(claude_agents "$source" || true)
   if [ "$DRY_RUN" -eq 1 ]; then
-    log "RENDER $source -> $destination"
+    log "$(write_label "$destination" RENDER REPLACE) $source -> $destination"
     return
   fi
+  done_verb=$(write_label "$destination" rendered replaced)
   mkdir -p "$(dirname -- "$destination")"
   {
     printf '%s\n' '---'
@@ -779,11 +950,11 @@ render_claude_agent() {
     printf '%s\n' '---'
     strip_frontmatter "$source"
   } > "$destination"
-  log "rendered ${destination#$TARGET/}"
+  log "$done_verb ${destination#$TARGET/}"
 }
 
 render_pi_skill() {
-  local source=$1 destination=$2 name description
+  local source=$1 destination=$2 name description done_verb
   name=$(basename "$(dirname -- "$destination")")
   name=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-//; s/-$//')
   [ -n "$name" ] || die "could not derive a valid Pi skill name for $destination"
@@ -792,9 +963,10 @@ render_pi_skill() {
   description=${description//\\/\\\\}
   description=${description//\"/\\\"}
   if [ "$DRY_RUN" -eq 1 ]; then
-    log "RENDER $source -> $destination"
+    log "$(write_label "$destination" RENDER REPLACE) $source -> $destination"
     return
   fi
+  done_verb=$(write_label "$destination" rendered replaced)
   mkdir -p "$(dirname -- "$destination")"
   {
     printf '%s\n' '---'
@@ -803,18 +975,19 @@ render_pi_skill() {
     printf '%s\n' '---'
     strip_frontmatter "$source"
   } > "$destination"
-  log "rendered ${destination#$TARGET/}"
+  log "$done_verb ${destination#$TARGET/}"
 }
 
 render_claude_command() {
-  local source=$1 destination=$2
+  local source=$1 destination=$2 done_verb
   if [ "$DRY_RUN" -eq 1 ]; then
-    log "RENDER $source -> $destination"
+    log "$(write_label "$destination" RENDER REPLACE) $source -> $destination"
     return
   fi
+  done_verb=$(write_label "$destination" rendered replaced)
   mkdir -p "$(dirname -- "$destination")"
   strip_frontmatter "$source" > "$destination"
-  log "rendered ${destination#$TARGET/}"
+  log "$done_verb ${destination#$TARGET/}"
 }
 
 install_copilot() {
@@ -886,7 +1059,12 @@ run_pi_config() {
 install_pi_extensions() {
   local file name source
   while IFS= read -r file; do
-    selected "$(pi_extension_name "$file")" "$EXTENSIONS_SPEC" || continue
+    name=$(pi_extension_name "$file")
+    if [ "$name" = "local-models" ]; then
+      [ "$SCOPE" = "project" ] || continue
+    else
+      selected "$name" "$EXTENSIONS_SPEC" || continue
+    fi
     if [ -d "$file" ]; then
       copy_tree "$file" "$DEST/extensions/$(basename "$file")"
     else
@@ -912,8 +1090,12 @@ install_pi_models() {
     selected "$provider" "$MODELS_SPEC" || continue
     set -- ${1+"$@"} "$provider"
   done < <(pi_model_providers)
-  run_pi_config merge-models --label "${DEST#"$TARGET"/}/models.json" \
-    "$PI_ADAPTER/models.json" "$DEST/models.json" "$@" || die "could not update $DEST/models.json"
+  if [ "$MODELS_SOURCE" = scan ]; then
+    set -- --update-base-url --label "${DEST#"$TARGET"/}/models.json" "$MODELS_CATALOG" "$DEST/models.json" "$@"
+  else
+    set -- --label "${DEST#"$TARGET"/}/models.json" "$MODELS_CATALOG" "$DEST/models.json" "$@"
+  fi
+  run_pi_config merge-models "$@" || die "could not update $DEST/models.json"
 }
 
 install_pi() {
@@ -962,9 +1144,4 @@ if [ "$HARNESS" = "pi" ] && [ "$MODELS_SPEC" != "none" ]; then
   print_models_warning
   printf '\nSelected models for %s/models.json:\n' "$DEST"
   print_pi_models "$MODELS_SPEC"
-  if [ "$SCOPE" = "project" ] && ! selected local-models "$EXTENSIONS_SPEC" \
-    && [ ! -e "$DEST/extensions/local-models.ts" ] \
-    && [ ! -e "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/extensions/local-models.ts" ]; then
-    printf '\nNOTE: Pi reads .pi/models.json only through the local-models extension; add --extensions local-models.\n'
-  fi
 fi

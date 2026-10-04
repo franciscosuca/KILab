@@ -31,6 +31,17 @@ If a reusable core item is specific to one harness, suffix its name with `-copil
 
 ## Supported harnesses
 
+| Feature | Copilot | Claude | Pi |
+|---|---|---|---|
+| **Scope** | project only | project or global | project or global |
+| **Interactive questionnaire** | ✅ | ✅ | ✅ |
+| **Agents** | ✅ (`.agent.md`) | ✅ (rendered with Claude frontmatter) | ✅ (converted to `SKILL.md`) |
+| **Skills** | ✅ (`SKILL.md`) | ✅ (as Claude commands) | ✅ (`SKILL.md`) |
+| **Optional extensions** | — | — | ✅ bundled extensions + Pi packages |
+| **Local models** | — | — | ✅ template (static) **or** live scan (LM Studio / oMLX) |
+| **Install path** | `.github/` | `.claude/` or `~/.claude/` | `.pi/` or `~/.pi/agent/` |
+| **CLI selector flags** | `--agents`, `--skills` | `--agents`, `--skills`, `--scope` | `--agents`, `--skills`, `--scope`, `--extensions`, `--models` |
+
 ### GitHub Copilot
 
 Copilot installations are project-scoped and write to the locations Copilot discovers:
@@ -63,10 +74,11 @@ Global:  ~/.pi/agent/   # or $PI_CODING_AGENT_DIR
 
 Pi does not consume Copilot `.agent.md` files directly. During installation, core agents are converted into Pi `SKILL.md` files. This conversion happens before Pi starts; it is not a runtime conversion.
 
-The installer never copies Pi authentication. Pi extensions and local models are chosen with `--extensions` and `--models`, or in the interactive questionnaire:
+The installer never copies Pi authentication. Optional Pi add-ons and local model providers are chosen with `--extensions` and `--models`, or in the interactive questionnaire:
 
-- **Extensions:** bundled extension files from `catalog/adapters/pi/extensions/` are copied to `extensions/`. All of them are installed by default (currently `local-models`). Pi packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
-- **Models:** the LM Studio and oMLX providers from `catalog/adapters/pi/models.json` are added to `models.json`. None are added by default.
+- **Project model support:** `local-models.ts` is installed automatically for project-scoped Pi installs so Pi can load the project's `.pi/models.json`. It is not a selectable extension option. Global installs omit it because Pi reads its global `models.json` natively.
+- **Optional extensions/packages:** the `--extensions` selector controls optional bundled extensions and Pi packages. Packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
+- **Models:** non-interactive `--models` commands use the static LM Studio/oMLX catalog in `catalog/adapters/pi/models.json`. The interactive questionnaire asks whether to use that template or scan live models from the selected local servers.
 
 Both merges only add what is missing. Existing providers, provider settings such as `baseUrl` and `apiKey`, models, packages, and other settings are kept, so re-running the installer is safe. Updating `settings.json` or `models.json` requires Python 3.7 or later.
 
@@ -111,7 +123,7 @@ Run those commands from `coding-agent-pack/`. LM Studio's API must be available 
 
 ## Installation
 
-Run the script from this directory or through a cloned KILab source checkout. Without arguments, in a terminal, it starts an interactive questionnaire. It asks for the harness, scope, project directory, agents, skills, and, for Pi, extensions and local models. Press Enter to accept the default shown in brackets. Before anything is written, the script prints a summary and the equivalent one-time command, then asks for confirmation:
+Run the script from this directory or through a cloned KILab source checkout. Without arguments, in a terminal, it starts an interactive questionnaire. It asks for the harness, scope, project directory, agents, skills, and, for Pi, optional extensions/packages and local model choices. For Pi, choose the static template or live discovery from LM Studio/oMLX; live discovery requires the selected server(s) to be running and lets you correct their ports. Press Enter to accept the default shown in brackets. Before anything is written, the script prints a summary, a warning about the files it will overwrite, and a one-time command, then asks for confirmation. A command printed after a live scan uses the static template IDs; the scanned IDs are specific to the current machine.
 
 ```bash
 ./scripts/install-pack.sh
@@ -165,6 +177,22 @@ When `--scope` is omitted, the script asks whether to install project-local or g
 ```
 
 `--list` also shows the Pi extensions and the local model catalog.
+
+### What the installer overwrites
+
+Resource files are replaced, not merged. Every run overwrites the instruction file for the harness, and overwrites the skills, agents, commands, or extensions you selected:
+
+| Harness | Replaced on every run | Replaced when selected |
+|---|---|---|
+| Copilot | `.github/copilot-instructions.md` | `.github/agents/*.agent.md`, files under `.github/skills/` |
+| Claude | `<scope>/CLAUDE.md`, `<scope>/commands/implementation-plan.md` | `<scope>/agents/*.md`, `<scope>/commands/*.md` |
+| Pi | `<scope>/APPEND_SYSTEM.md` | files under `<scope>/skills/`, `<scope>/extensions/*` |
+
+The instruction file is the pack's own guidance and currently holds one rule: writing `kyas` ("keep your answer short") in a prompt tells the harness to answer in about 30 words, expanding only when asked or when accuracy requires it. Pi applies it through `APPEND_SYSTEM.md`, which appends to Pi's built-in system prompt and never replaces your own `SYSTEM.md`.
+
+Only Pi's `settings.json` and `models.json` are merged: existing settings, packages, providers, API keys, and model IDs are kept. Skill and extension directories are merged too, so extra files you added beside them survive. The installer never deletes anything you did not select, so an earlier, larger install keeps what it added.
+
+The interactive questionnaire prints this as a warning in its summary before asking to proceed. `--dry-run` labels each planned write `COPY`, `COPY TREE`, or `REPLACE`, and a real run logs `installed`, `rendered`, `updated`, or `replaced` for each path.
 
 The script never installs anything from `catalog/archived/`, never modifies `.github/workflows/` or issue templates, and does not delete unselected files.
 

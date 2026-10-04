@@ -7,6 +7,8 @@ Project: .pi/APPEND_SYSTEM.md
 Global:  ~/.pi/agent/APPEND_SYSTEM.md
 ```
 
+That file is the pack's own guidance and currently holds one rule: writing `kyas` ("keep your answer short") in a prompt keeps answers to about 30 words, expanding only when asked or when accuracy requires it. Each run replaces the installed copy, so change the pack source, or your own `SYSTEM.md`, rather than editing the installed file.
+
 The installer also converts core agents into Pi `SKILL.md` files and installs core skills under the selected Pi scope:
 
 ```text
@@ -14,10 +16,11 @@ Project: .pi/skills/ and .pi/extensions/
 Global:  ~/.pi/agent/skills/ and ~/.pi/agent/extensions/
 ```
 
-Optional extras are chosen with `--extensions` and `--models`, or in the interactive questionnaire:
+Optional extras and model providers are handled as follows:
 
-- `extensions/`: bundled Pi extensions, copied to the selected scope's `extensions/` directory. `local-models.ts` checks the project `.pi/models.json` first and the global Pi agent directory second.
-- `packages.txt`: Pi packages, one `<name> <source>` pair per line. The installer adds selected sources to the `packages` list in `settings.json`, and Pi installs them on its next start.
-- `models.json`: LM Studio and oMLX providers with their model IDs, merged into the selected scope's `models.json`. The models themselves must be downloaded manually in LM Studio or oMLX.
+- `extensions/local-models.ts` is installed automatically for project scope. Pi does not read project `.pi/models.json` without it. Global scope omits it because Pi reads its global models file natively; `local-models` is not an extension-menu choice.
+- `extensions/`: other bundled Pi extensions, if present, can be selected and are copied to the selected scope's `extensions/` directory.
+- `packages.txt`: optional Pi packages, one `<name> <source>` pair per line. The installer adds selected sources to the `packages` list in `settings.json`, and Pi installs them on its next start.
+- `models.json`: static LM Studio and oMLX provider catalog used by non-interactive installs and the template choice in the questionnaire. Interactive installs can instead scan model IDs from running LM Studio and/or oMLX servers; discovered models themselves must still be downloaded/available in those runtimes.
 
-The installer never copies authentication. Merges into `settings.json` and `models.json` only add missing entries.
+The installer never copies authentication. Merges into `settings.json` and `models.json` add missing entries; interactive live-scan mode also aligns the selected providers' `baseUrl` with the endpoint it scanned, while preserving existing API keys and other provider settings. `APPEND_SYSTEM.md`, selected skills, and selected extensions are overwritten in place, and nothing is ever deleted.
