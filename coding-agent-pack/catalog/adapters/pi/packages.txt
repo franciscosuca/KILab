@@ -3,3 +3,4 @@
 # The installer adds the source to the scope's settings.json "packages" list;
 # Pi installs missing packages on its next start.
 pi-token-speed npm:pi-token-speed
+pi-context npm:pi-context

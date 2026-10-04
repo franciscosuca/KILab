@@ -8,6 +8,7 @@ CORE_AGENTS="$CATALOG/core/agents"
 CORE_SKILLS="$CATALOG/core/skills"
 PI_ADAPTER="$CATALOG/adapters/pi"
 PI_CONFIG="$SCRIPT_DIR/pi-config.py"
+PI_MODEL_SYNC="$SCRIPT_DIR/sync-pi-models.py"
 
 TARGET="$PWD"
 HARNESS=""
@@ -16,6 +17,12 @@ AGENTS_SPEC=""
 SKILLS_SPEC=""
 EXTENSIONS_SPEC=""
 MODELS_SPEC=""
+MODELS_CATALOG="$PI_ADAPTER/models.json"
+MODELS_SOURCE=template
+MODEL_SCAN_DIR=""
+SCAN_PROVIDER_SPEC=""
+LMSTUDIO_SCAN_URL=""
+OMLX_SCAN_URL=""
 AGENTS_SET=0
 SKILLS_SET=0
 EXTENSIONS_SET=0
@@ -25,6 +32,11 @@ LIST_ONLY=0
 INTERACTIVE=0
 ARG_COUNT=$#
 ANSWER=""
+
+cleanup_model_scan() {
+  if [ -n "$MODEL_SCAN_DIR" ]; then rm -rf -- "$MODEL_SCAN_DIR"; fi
+}
+trap cleanup_model_scan EXIT
 
 usage() {
   cat <<'EOF'
@@ -42,7 +54,7 @@ Options:
   --agents <all|a,b,c|none>        Agents to install (default: all if no selector is given)
   --skills <all|a,b,c|none>        Skills to install (default: all if no selector is given)
   --all                            Install all available agents and skills
-  --extensions <all|a,b,c|none>    Pi only: extensions to install (default: bundled extension files)
+  --extensions <all|a,b,c|none>    Pi only: optional extensions/packages (default: none)
   --models <all|a,b|none>          Pi only: local model providers to add to models.json (default: none)
   --list                           List agents, skills, Pi extensions, and Pi models, then exit
   --dry-run                        Show changes without writing files
@@ -143,11 +155,13 @@ pi_packages() {
   done < "$PI_ADAPTER/packages.txt"
 }
 
-# pi_extension_menu [bundled]: extension names with descriptions; "bundled" omits Pi packages.
+# pi_extension_menu [bundled]: optional choices; local-models is managed automatically.
 pi_extension_menu() {
   local file name source
   while IFS= read -r file; do
-    printf '%s (bundled extension: %s)\n' "$(pi_extension_name "$file")" "$(basename "$file")"
+    name=$(pi_extension_name "$file")
+    [ "$name" = "local-models" ] && continue
+    printf '%s (bundled extension: %s)\n' "$name" "$(basename "$file")"
   done < <(pi_extension_files)
   if [ "${1:-}" = "bundled" ]; then
     return 0
@@ -168,9 +182,11 @@ pi_packages_selected() {
 }
 
 default_extensions() {
-  local file names=""
+  local file name names=""
   while IFS= read -r file; do
-    names="${names:+$names,}$(pi_extension_name "$file")"
+    name=$(pi_extension_name "$file")
+    [ "$name" = "local-models" ] && continue
+    names="${names:+$names,}$name"
   done < <(pi_extension_files)
   printf '%s' "${names:-none}"
 }
