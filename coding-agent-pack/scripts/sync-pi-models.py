@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -20,7 +21,20 @@ from urllib.request import Request, urlopen
 
 def auth_headers(provider: dict[str, Any]) -> dict[str, str]:
     key = provider.get("apiKey")
-    return {"Authorization": f"Bearer {key}"} if key else {}
+    if not isinstance(key, str) or not key or key.startswith("!"):
+        return {}
+    missing = False
+
+    def replace(match: re.Match[str]) -> str:
+        nonlocal missing
+        name = match.group(1) or match.group(2)
+        value = os.environ.get(name)
+        if not value:
+            missing = True
+        return value or ""
+
+    key = re.sub(r"\$([A-Za-z_][A-Za-z0-9_]*)|\$\{([A-Za-z_][A-Za-z0-9_]*)\}", replace, key).strip()
+    return {"Authorization": f"Bearer {key}"} if key and not missing else {}
 
 
 def get_json(url: str, provider: dict[str, Any], timeout: float) -> dict[str, Any]:
@@ -93,7 +107,9 @@ def lmstudio_cli_fallback(timeout: float) -> list[str]:
     return model_ids({"data": rows})
 
 
-def discover_lmstudio(provider: dict[str, Any], timeout: float) -> tuple[list[str], str]:
+def discover_lmstudio(
+    provider: dict[str, Any], timeout: float, *, allow_cli_fallback: bool = True
+) -> tuple[list[str], str]:
     base_url = provider.get("baseUrl")
     if not isinstance(base_url, str) or not base_url:
         raise ValueError("LM Studio provider has no baseUrl")
@@ -105,6 +121,8 @@ def discover_lmstudio(provider: dict[str, Any], timeout: float) -> tuple[list[st
             raise ValueError("LM Studio returned no chat/VLM models")
         return ids, native_url
     except (HTTPError, URLError, TimeoutError, ValueError, json.JSONDecodeError) as exc:
+        if not allow_cli_fallback:
+            raise RuntimeError(f"Could not query LM Studio at {native_url}: {exc}") from exc
         ids = lmstudio_cli_fallback(timeout)
         if not ids:
             raise RuntimeError("LM Studio returned no chat/VLM models") from exc
@@ -150,6 +168,25 @@ def main() -> int:
         help="Pi models.json path (default: ~/.pi/agent/models.json)",
     )
     parser.add_argument("--timeout", type=float, default=5.0, help="Provider request timeout in seconds")
+    parser.add_argument(
+        "--provider",
+        choices=("lmstudio", "omlx"),
+        action="append",
+        dest="providers",
+        help="Provider to sync (repeatable; defaults to both)",
+    )
+    parser.add_argument(
+        "--base-url",
+        action="append",
+        default=[],
+        metavar="PROVIDER=URL",
+        help="Override a provider's base URL for this sync",
+    )
+    parser.add_argument(
+        "--require-api",
+        action="store_true",
+        help="Require the LM Studio HTTP API; do not fall back to the lms CLI",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Show discovered IDs without writing the config")
     args = parser.parse_args()
 
@@ -159,24 +196,34 @@ def main() -> int:
         providers = config.get("providers")
         if not isinstance(providers, dict):
             raise ValueError("Config has no 'providers' object")
-        for provider_name in ("lmstudio", "omlx"):
+        selected = list(dict.fromkeys(args.providers or ["lmstudio", "omlx"]))
+        for provider_name in selected:
             if not isinstance(providers.get(provider_name), dict):
                 raise ValueError(f"Config has no '{provider_name}' provider")
 
-        # Discover both providers before writing: a failed provider must not
-        # leave Pi configured with a partial or empty model list.
-        lm_ids, lm_source = discover_lmstudio(providers["lmstudio"], args.timeout)
-        omlx_ids, omlx_source = discover_omlx(providers["omlx"], args.timeout)
+        for override in args.base_url:
+            provider_name, separator, base_url = override.partition("=")
+            if not separator or provider_name not in selected or not base_url:
+                raise ValueError("--base-url must be PROVIDER=URL for a selected provider")
+            providers[provider_name]["baseUrl"] = base_url
 
-        providers["lmstudio"]["models"] = [{"id": model_id} for model_id in lm_ids]
-        providers["omlx"]["models"] = [{"id": model_id} for model_id in omlx_ids]
+        # Discover every selected provider before writing so a failed sync
+        # never leaves a partially updated configuration.
+        discovered: dict[str, tuple[list[str], str]] = {}
+        for provider_name in selected:
+            if provider_name == "lmstudio":
+                discovered[provider_name] = discover_lmstudio(
+                    providers[provider_name], args.timeout, allow_cli_fallback=not args.require_api
+                )
+            else:
+                discovered[provider_name] = discover_omlx(providers[provider_name], args.timeout)
 
-        print(f"LM Studio ({lm_source}) — {len(lm_ids)} models:")
-        for model_id in lm_ids:
-            print(f"  {model_id}")
-        print(f"oMLX ({omlx_source}) — {len(omlx_ids)} models:")
-        for model_id in omlx_ids:
-            print(f"  {model_id}")
+        for provider_name, (ids, source) in discovered.items():
+            providers[provider_name]["models"] = [{"id": model_id} for model_id in ids]
+            label = "LM Studio" if provider_name == "lmstudio" else "oMLX"
+            print(f"{label} ({source}) — {len(ids)} models:")
+            for model_id in ids:
+                print(f"  {model_id}")
 
         if args.dry_run:
             print("Dry run: config not changed.")
