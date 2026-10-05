@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="{{LANG}}">
+<head>
+<meta charset="utf-8">
+<title>{{TITLE}}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* Print: File > Print > Save as PDF, paper A4, margins "None", enable "Background graphics". */
+  @page { size: A4; margin: 0; }
+
+  :root {
+    --fs: {{FS}}pt;               /* body size; scripts/fit.mjs picks the largest size that fits one page */
+    --ink: #1d1f23;
+    --muted: #5b616b;
+    --accent: #3b8fb8;
+    --panel: #ececee;
+    --rule: #b9bcc2;
+    --sidebar-w: 59mm;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    background: #d6d8dc;
+    color: var(--ink);
+    font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: var(--fs);
+    line-height: 1.34;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    margin: 8mm auto;
+    background: #fff;
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    overflow: hidden;
+    box-shadow: 0 2px 18px rgba(0,0,0,.18);
+  }
+
+  /* ---------- Sidebar ---------- */
+  aside { background: var(--panel); padding: 6mm 5mm 5mm 5mm; display: flex; flex-direction: column; }
+  .photo { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; margin-bottom: 4mm; }
+  aside h2 {
+    font-family: "Iowan Old Style", "Palatino", Georgia, serif;
+    font-size: calc(var(--fs) + 3.9pt);
+    font-weight: 700;
+    letter-spacing: .01em;
+    padding-bottom: 1.2mm;
+    margin: 4.4mm 0 2.2mm;
+    border-bottom: 1px dotted var(--rule);
+  }
+  aside h2:first-of-type { margin-top: 0; }
+  aside p, aside li { font-size: calc(var(--fs) - .45pt); line-height: 1.42; }
+  aside p + p { margin-top: 1.6mm; }
+  aside ul { list-style: none; }
+  aside li + li { margin-top: 1.6mm; }
+  aside .sub { color: var(--muted); }
+  aside a { color: inherit; text-decoration: none; }
+  .contact li { word-break: break-word; }
+  .contact .k { display: block; font-size: calc(var(--fs) - 1.95pt); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+
+  /* ---------- Main column ---------- */
+  main { display: flex; flex-direction: column; min-width: 0; }
+  header {
+    background: var(--panel);
+    padding: 6mm 6.5mm 4mm 6.5mm;
+    display: flex; align-items: center; justify-content: space-between; gap: 5mm;
+    margin-bottom: 4mm;
+  }
+  header h1 { font-size: 17pt; font-weight: 600; letter-spacing: -.005em; line-height: 1.15; }
+  header .role { font-size: calc(var(--fs) + .25pt); color: var(--muted); margin-top: 1mm; }
+  header .qr { width: 15mm; height: 15mm; flex: none; }
+
+  .content { padding: 0 6.5mm 5mm 6.5mm; }
+  section + section { margin-top: 3mm; }
+  h3 {
+    font-size: calc(var(--fs) - .35pt);
+    font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--accent);
+    padding-bottom: .9mm; margin-bottom: 1.8mm;
+    border-bottom: 1px solid var(--panel);
+  }
+  strong { font-weight: 650; }
+
+  ul.list { list-style: none; }
+  ul.list li { position: relative; padding-left: 3.2mm; }
+  ul.list li + li { margin-top: .8mm; }
+  ul.list li::before {
+    content: ""; position: absolute; left: .3mm; top: .62em;
+    width: 1.1mm; height: 1.1mm; border-radius: 50%; background: var(--ink);
+  }
+  .skills li { margin-top: .8mm; }
+
+  .job { break-inside: avoid; }
+  .job + .job { margin-top: 2.8mm; }
+  .job h4 { font-size: calc(var(--fs) + .55pt); font-weight: 700; line-height: 1.3; }
+  .job h4 .when { font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .job .desc { color: var(--accent); font-style: italic; font-size: calc(var(--fs) - .75pt); margin: .4mm 0 1mm; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: .92em; background: #f2f3f5; padding: 0 .9mm; border-radius: .8mm;
+  }
+  a { color: inherit; }
+
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <aside>
+{{PHOTO}}
+    <h2>{{L_CONTACT}}</h2>
+    <ul class="contact">
+{{CONTACT}}
+    </ul>
+{{EDUCATION}}
+{{LANGUAGES}}
+{{CERTIFICATIONS}}
+{{ADDITIONAL}}
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <h1>{{NAME}}</h1>
+        <div class="role">{{ROLE}}</div>
+      </div>
+{{QR}}
+    </header>
+
+    <div class="content">
+      <section>
+        <h3>{{L_PROFILE}}</h3>
+        <p>{{PROFILE}}</p>
+      </section>
+
+      <section>
+        <h3>{{L_COMPETENCIES}}</h3>
+        <ul class="list skills">
+{{COMPETENCIES}}
+        </ul>
+      </section>
+
+      <section>
+        <h3>{{L_EXPERIENCE}}</h3>
+{{EXPERIENCE}}
+      </section>
+{{EXTRA_SECTIONS}}
+    </div>
+  </main>
+
+</div>
+</body>
+</html>

@@ -53,6 +53,15 @@ while IFS= read -r -d '' file; do
   check grep -q '^description:' "$file"
 done < <(find "$CATALOG/core/skills" -type f -name 'SKILL.md' -print0)
 
+# Skills may bundle scripts: they must be executable and syntactically valid.
+while IFS= read -r -d '' file; do
+  check test -x "$file"
+  case "$file" in
+    *.sh) check bash -n "$file" ;;
+    *.py) check python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$file" ;;
+  esac
+done < <(find "$CATALOG/core/skills" -path '*/scripts/*' -type f \( -name '*.sh' -o -name '*.py' -o -name '*.mjs' \) -print0)
+
 if rg -n -i '(/Users/|app-wizard|seal-module-opcua-client|Onboarding_Wizard_Semantic_Release|pipelines/Semantic_Release)' \
   "$CATALOG/core" >/dev/null; then
   printf '❌ core content contains project-specific paths or pipeline names\n'
