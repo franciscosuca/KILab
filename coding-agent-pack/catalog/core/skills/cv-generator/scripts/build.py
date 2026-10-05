@@ -6,7 +6,7 @@ Usage: build.py <cv.json> <out.html> [--no-qr] [--no-photo]
 No third-party dependencies. Inline markup in text fields: **bold**, `code`, [text](url).
 
 Personal data (photo, QR code, profile, base CV) lives in the user-data directory, never in the skill:
-  $CV_GENERATOR_HOME, default ~/.config/cv-generator   (photo.jpg|png, qr.png, profile.md, base-cv.json)
+  $CV_GENERATOR_HOME, default ~/.config/cv-generator   (photo.jpg|png, qr.png, profile.md, base-cv.json, base-cv.<lang>.json)
 """
 import base64, html, json, os, re, sys
 from pathlib import Path
@@ -17,6 +17,9 @@ LABELS = {
     "en": dict(contact="Contact", education="Education", languages="Languages", certifications="Certifications",
                additional="Additional", profile="Profile", competencies="Core competencies", experience="Experience",
                email="Email", phone="Phone", location="Location", linkedin="LinkedIn", github="GitHub", web="Web"),
+    "es": dict(contact="Contacto", education="Educación", languages="Idiomas", certifications="Certificaciones",
+               additional="Adicional", profile="Perfil", competencies="Competencias clave", experience="Experiencia",
+               email="Correo", phone="Teléfono", location="Ubicación", linkedin="LinkedIn", github="GitHub", web="Web"),
     "de": dict(contact="Kontakt", education="Ausbildung", languages="Sprachen", certifications="Zertifizierungen",
                additional="Weiteres", profile="Profil", competencies="Kernkompetenzen", experience="Berufserfahrung",
                email="E-Mail", phone="Telefon", location="Standort", linkedin="LinkedIn", github="GitHub", web="Web"),
@@ -144,7 +147,8 @@ def build(cv: dict, no_qr=False, no_photo=False, base: Path = Path(".")) -> str:
 if __name__ == "__main__":
     if "--home" in sys.argv:
         files = ("profile.md", "base-cv.json", "photo.jpg", "qr.png")
-        print(json.dumps({"home": str(HOME), **{f: (HOME / f).exists() for f in files}}))
+        variants = sorted(p.name for p in HOME.glob("base-cv.*.json")) if HOME.exists() else []
+        print(json.dumps({"home": str(HOME), **{f: (HOME / f).exists() for f in files}, "language_variants": variants}))
         sys.exit(0)
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if len(args) != 2:

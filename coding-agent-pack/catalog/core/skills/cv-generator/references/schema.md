@@ -4,7 +4,7 @@ Start from the user's `base-cv.json` (or `assets/example-cv.json`, placeholder d
 
 ```jsonc
 {
-  "lang": "en",                      // "en" | "de": picks the default section labels (see below)
+  "lang": "en",                      // "en" | "es" | "de": picks the default section labels (see below)
   "labels": { "experience": "..." }, // optional: override any label
   "font_size": 8.5,                  // optional starting size in pt; fit.mjs overwrites it with the largest that fits
   "name": "Full Name",
@@ -31,13 +31,15 @@ Start from the user's `base-cv.json` (or `assets/example-cv.json`, placeholder d
 `**bold**`, `` `code` `` (monospace chip), `[text](https://url)`. Everything else is HTML-escaped (safe to use `&`, `<`, `/`).
 
 ## Contact labels
-`label` is looked up in the label table (`email`, `phone`, `location`, `linkedin`, `github`, `web`), so with `"lang": "de"` "Email" becomes "E-Mail". Unknown labels are printed as written. Empty sections are omitted (no education → no Education block).
+`label` is looked up in the label table (`email`, `phone`, `location`, `linkedin`, `github`, `web`), so with `"lang": "de"` "Email" becomes "E-Mail" and with `"es"` "Correo". Unknown labels are printed as written. Empty sections are omitted (no education → no Education block).
 
 ## Default labels
-| key | en | de |
-|---|---|---|
-| contact / education / languages / certifications / additional | Contact / Education / Languages / Certifications / Additional | Kontakt / Ausbildung / Sprachen / Zertifizierungen / Weiteres |
-| profile / competencies / experience | Profile / Core competencies / Experience | Profil / Kernkompetenzen / Berufserfahrung |
+| key | en | es | de |
+|---|---|---|---|
+| contact / education / languages / certifications / additional | Contact / Education / Languages / Certifications / Additional | Contacto / Educación / Idiomas / Certificaciones / Adicional | Kontakt / Ausbildung / Sprachen / Zertifizierungen / Weiteres |
+| profile / competencies / experience | Profile / Core competencies / Experience | Perfil / Competencias clave / Experiencia | Profil / Kernkompetenzen / Berufserfahrung |
+
+For other languages add an entry to `LABELS` in `scripts/build.py` (or override with `"labels"` in the JSON).
 
 ## Layout facts
 - A4, fixed 297 mm height, two columns (59 mm grey sidebar + main). Sidebar content that exceeds the page is also detected by `fit.mjs`.

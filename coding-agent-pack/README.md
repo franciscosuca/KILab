@@ -135,13 +135,13 @@ Bundled scripts must be executable; `validate-pack.sh` checks that and their syn
 
 ### `cv-generator`
 
-Builds a one-page A4 CV (self-contained HTML plus PDF, sidebar layout) tailored to a job posting. Needs `python3`, and `node` + `npm` with network access on the first run (Playwright and Chromium are installed once into `~/.cache/cv-generator`).
+Builds a one-page A4 CV (self-contained HTML plus PDF, sidebar layout) tailored to a job posting, in English, Spanish or German (several languages in one go). Needs `python3`, and `node` + `npm` with network access on the first run (Playwright and Chromium are installed once into `~/.cache/cv-generator`).
 
 ```bash
 ./scripts/install-pack.sh --harness pi --scope global --skills cv-generator
 ```
 
-The skill ships only the engine and placeholder example data. Your photo, QR code, verified profile and base CV live in `~/.config/cv-generator/` (override with `CV_GENERATOR_HOME`); on first use the agent interviews you and creates `profile.md` and `base-cv.json` there, so installing or updating the skill never touches your data. Use it with `/skill:cv-generator <job URL or description, language>`.
+The skill ships only the engine and placeholder example data. Your photo, QR code, verified profile and base CV live in `~/.config/cv-generator/` (override with `CV_GENERATOR_HOME`); on first use the agent interviews you and creates `profile.md` and `base-cv.json` there, so installing or updating the skill never touches your data. Translations live next to the base CV as `base-cv.<lang>.json`. Use it with `/skill:cv-generator <job URL or description, language>`.
 
 ## Installation
 
