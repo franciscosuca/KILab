@@ -91,8 +91,10 @@ def finish(args: argparse.Namespace, config: dict[str, Any], before: str, parts:
 
 def list_models(args: argparse.Namespace) -> int:
     for name, provider in catalog_providers(args.catalog).items():
-        for model_id in model_ids(provider["models"]):
-            print(f"{name}\t{provider.get('baseUrl') or '-'}\t{model_id}")
+        for model in provider["models"]:
+            if not isinstance(model, dict) or not isinstance(model.get("id"), str):
+                continue
+            print(f"{name}\t{provider.get('baseUrl') or '-'}\t{model['id']}\t{model.get('name') or '-'}")
     return 0
 
 
@@ -145,27 +147,43 @@ def merge_models(args: argparse.Namespace) -> int:
             elif key == "baseUrl" and args.update_base_url and target[key] != value:
                 target[key] = copy.deepcopy(value)
                 changes.append("baseUrl updated")
-        # Remove already-duplicated entries, then add what is missing.
-        seen: set[str] = set()
-        deduped: list[Any] = []
-        for model in models:
-            model_id = model.get("id") if isinstance(model, dict) else None
-            if model_id is None:
+        if args.replace:
+            target["models"] = copy.deepcopy(source["models"])
+            changes.append(f"models replaced with {len(model_ids(source['models']))} scanned models")
+        else:
+            # Remove already-duplicated entries, then add what is missing.
+            seen: set[str] = set()
+            deduped: list[Any] = []
+            for model in models:
+                model_id = model.get("id") if isinstance(model, dict) else None
+                if model_id is None:
+                    deduped.append(model)
+                    continue
+                if model_id in seen:
+                    continue
+                seen.add(model_id)
                 deduped.append(model)
-                continue
-            if model_id in seen:
-                continue
-            seen.add(model_id)
-            deduped.append(model)
-        duplicates = len(models) - len(deduped)
-        if duplicates:
-            models[:] = deduped
-            changes.append(f"-{duplicates} duplicate models")
-        present = set(model_ids(models))
-        added = [model for model in source["models"] if isinstance(model, dict) and model.get("id") not in present]
-        models.extend(copy.deepcopy(added))
-        if added:
-            changes.append(f"+{len(added)} models")
+            duplicates = len(models) - len(deduped)
+            if duplicates:
+                models[:] = deduped
+                changes.append(f"-{duplicates} duplicate models")
+            present = set(model_ids(models))
+            added = [model for model in source["models"] if isinstance(model, dict) and model.get("id") not in present]
+            models.extend(copy.deepcopy(added))
+            if added:
+                changes.append(f"+{len(added)} models")
+            source_names = {
+                model["id"]: model["name"]
+                for model in source["models"]
+                if isinstance(model, dict) and model.get("id") and model.get("name")
+            }
+            named = 0
+            for model in models:
+                if isinstance(model, dict) and not model.get("name") and source_names.get(model.get("id")):
+                    model["name"] = source_names[model["id"]]
+                    named += 1
+            if named:
+                changes.append(f"+{named} display names")
         label = target_name if target_name == name else f"{name} -> {target_name} (same endpoint)"
         parts.append(f"{label}: {', '.join(changes) if changes else 'up to date'}")
     return finish(args, config, before, parts)
@@ -220,6 +238,11 @@ def main() -> int:
         "--update-base-url",
         action="store_true",
         help="Update an existing provider's Base URL to the source catalog value",
+    )
+    command.add_argument(
+        "--replace",
+        action="store_true",
+        help="Replace the selected providers' model lists with the catalog instead of merging",
     )
     command.add_argument("catalog", type=Path, help="Pack models.json catalog")
     command.add_argument("config", type=Path, help="Pi models.json to update (created if missing)")

@@ -19,6 +19,7 @@ EXTENSIONS_SPEC=""
 MODELS_SPEC=""
 MODELS_CATALOG="$PI_ADAPTER/models.json"
 MODELS_SOURCE=template
+MODELS_MERGE=extend
 MODEL_SCAN_DIR=""
 SCAN_PROVIDER_SPEC=""
 LMSTUDIO_SCAN_URL=""
@@ -51,14 +52,17 @@ Options:
   --target <path>                 Project directory (default: current directory)
   --harness <name>                Harness to install: copilot, claude, or pi
   --scope <project|global>         Installation scope; prompts when omitted
-  --agents <all|a,b,c|none>        Agents to install (default: all if no selector is given)
-  --skills <all|a,b,c|none>        Skills to install (default: all if no selector is given)
+  --agents <all|a,b,c|none>        Agents to install (CLI default: all; interactive default: none)
+  --skills <all|a,b,c|none>        Skills to install (CLI default: all; interactive default: none)
   --all                            Install all available agents and skills
   --extensions <all|a,b,c|none>    Pi only: optional extensions/packages (default: none)
   --models <all|a,b|none>          Pi only: local model providers to add to models.json (default: none)
   --list                           List agents, skills, Pi extensions, and Pi models, then exit
   --dry-run                        Show changes without writing files
   -h, --help                       Show this help
+
+Update Kilab:
+  git -C "$HOME/Kilab" pull --ff-only
 
 Examples:
   install-pack.sh
@@ -208,12 +212,12 @@ pi_model_menu() {
   '
 }
 
-# print_pi_models <all|provider,...>: catalog model IDs grouped by provider.
+# print_pi_models <all|provider,...>: catalog models grouped by provider, showing display names.
 print_pi_models() {
   pi_models | awk -F '\t' -v spec=",$1," '
     spec != ",all," && index(spec, "," $1 ",") == 0 { next }
     $1 != last { printf "%s (%s)\n", $1, $2; last = $1 }
-    { printf "  %s\n", $3 }
+    { printf "  %s\n", ($4 != "" && $4 != "-") ? $4 : $3 }
   '
 }
 
@@ -256,8 +260,9 @@ url_port() {
 
 print_models_warning() {
   printf 'WARNING: The installer only adds model IDs to models.json; it does not download models.\n'
-  printf '         Download each model manually in LM Studio (Discover tab or "lms get") or oMLX\n'
-  printf '         (model downloader in the /admin dashboard) before selecting it in Pi.\n'
+  printf '         Download local models manually in LM Studio (Discover tab or "lms get") or oMLX\n'
+  printf '         (model downloader in the /admin dashboard) before selecting them in Pi. Models marked\n'
+  printf '         [lmlink] run on another LM Link device and need that device online instead.\n'
 }
 
 scan_pi_model_catalog() {
@@ -333,6 +338,142 @@ PY
   fi
   MODELS_CATALOG="$MODEL_SCAN_DIR/models.json"
   MODELS_SOURCE=scan
+}
+
+# select_scanned_models: numbered per-provider pick from the scan catalog.
+# Rewrites MODELS_CATALOG to the filtered selection and sets MODELS_SPEC.
+select_scanned_models() {
+  local provider p id pname key token index ok is_link selected_ids any=0 providers
+  local -a ids displays filter_args
+
+  # A for-loop keeps stdin free: the ask prompts inside must not read the provider list.
+  providers=$(pi_model_providers)
+  for provider in $providers; do
+    ids=()
+    displays=()
+    while IFS=$'\t' read -r p _ id pname; do
+      [ "$p" = "$provider" ] || continue
+      ids+=("$id")
+      if [ -n "$pname" ] && [ "$pname" != "-" ]; then displays+=("$pname"); else displays+=("$id"); fi
+    done < <(pi_models)
+    [ "${#ids[@]}" -gt 0 ] || continue
+
+    printf '\n%s models found by the scan:\n' "$provider"
+    for index in "${!ids[@]}"; do
+      printf '  %2d) %s\n' "$((index + 1))" "${displays[$index]}"
+    done
+    if [ "$provider" = lmstudio ]; then
+      printf '  Enter "all", "lmlink" (served by another LM Link device), "local",\n'
+      printf '  "none", or model numbers separated by commas or spaces.\n'
+    else
+      printf '  Enter "all", "none", or model numbers separated by commas or spaces.\n'
+    fi
+
+    while :; do
+      ask "Which $provider models should Pi get? [all]: "
+      key=$(printf '%s' "${ANSWER:-all}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')
+      selected_ids=""
+      ok=1
+      case "$key" in
+        all)
+          selected_ids=$(IFS=,; printf '%s' "${ids[*]}")
+          ;;
+        none) ;;
+        lmlink|local)
+          if [ "$provider" != lmstudio ]; then
+            printf 'Please enter "all", "none", or model numbers.\n'
+            continue
+          fi
+          for index in "${!ids[@]}"; do
+            case "${displays[$index]}" in
+              *'[lmlink]') is_link=1 ;;
+              *) is_link=0 ;;
+            esac
+            if { [ "$key" = lmlink ] && [ "$is_link" -eq 1 ]; } || { [ "$key" = local ] && [ "$is_link" -eq 0 ]; }; then
+              selected_ids="${selected_ids:+$selected_ids,}${ids[$index]}"
+            fi
+          done
+          [ -n "$selected_ids" ] || printf 'No %s models in this scan; %s is skipped.\n' "$key" "$provider"
+          ;;
+        *)
+          for token in ${ANSWER//,/ }; do
+            if [[ "$token" =~ ^[0-9]+$ ]] && ((10#$token >= 1 && 10#$token <= ${#ids[@]})); then
+              selected_ids="${selected_ids:+$selected_ids,}${ids[$((10#$token - 1))]}"
+            else
+              printf 'Unknown selection: %s\n' "$token"
+              ok=0
+            fi
+          done
+          ;;
+      esac
+      [ "$ok" -eq 1 ] && break
+    done
+
+    if [ -n "$selected_ids" ]; then
+      any=1
+      filter_args+=("$provider=$selected_ids")
+    fi
+  done
+
+  if [ "$any" -eq 0 ]; then
+    MODELS_SPEC=none
+    printf '\nNo models selected; the Pi models.json is left unchanged.\n'
+    return 0
+  fi
+
+  python3 - "$MODEL_SCAN_DIR/models.json" "$MODEL_SCAN_DIR/selected.json" ${filter_args[@]+"${filter_args[@]}"} <<'PY'
+import json
+import sys
+from pathlib import Path
+
+catalog_path, out_path = sys.argv[1], sys.argv[2]
+keep = {}
+for pair in sys.argv[3:]:
+    provider, separator, ids = pair.partition("=")
+    if separator:
+        keep[provider] = set(filter(None, ids.split(",")))
+config = json.loads(Path(catalog_path).read_text(encoding="utf-8"))
+providers = config.get("providers", {})
+config["providers"] = {
+    name: {
+        **provider,
+        "models": [
+            model
+            for model in provider.get("models", [])
+            if isinstance(model, dict) and model.get("id") in keep[name]
+        ],
+    }
+    for name, provider in providers.items()
+    if keep.get(name)
+}
+Path(out_path).write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+PY
+  MODELS_CATALOG="$MODEL_SCAN_DIR/selected.json"
+  MODELS_SPEC=$(pi_model_providers | tr '\n' ',' | sed 's/,$//')
+  [ -n "$MODELS_SPEC" ] || MODELS_SPEC=none
+}
+
+# pi_target_has_selected_models: true when the target models.json already lists models for MODELS_SPEC.
+pi_target_has_selected_models() {
+  local count
+  count=$(python3 - "$(pi_target_models_path)" "$MODELS_SPEC" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    providers = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8")).get("providers", {})
+except (OSError, json.JSONDecodeError):
+    providers = {}
+total = 0
+for name in sys.argv[2].split(","):
+    models = providers.get(name, {}).get("models")
+    if isinstance(models, list):
+        total += len(models)
+print(total)
+PY
+)
+  [ "${count:-0}" -gt 0 ]
 }
 
 normalize_spec() {
@@ -539,18 +680,22 @@ scan (Discover models currently available on this machine)" template
       MODELS_SOURCE=$ANSWER
       if [ "$MODELS_SOURCE" = scan ]; then
         scan_pi_model_catalog
+        print_models_warning
+        select_scanned_models
+        if [ "$MODELS_SPEC" != none ] && pi_target_has_selected_models; then
+          choose_one "The selected providers already have models in $(pi_target_models_path). What should happen to them?" "extend (keep the existing models and add the selected ones)
+clean (remove the current models of the selected providers, then install the selection)" extend
+          MODELS_MERGE=$ANSWER
+        fi
         printf '\n'
       else
         printf '\nLocal models for Pi (static template catalog):\n'
         print_pi_models all | sed 's/^/  /'
-      fi
-      print_models_warning
-      default=$MODELS_SPEC
-      [ "$MODELS_SET" -eq 1 ] || default=all
-      choose_many "Which model providers do you want to add to Pi's models.json?" "$(pi_model_menu)" "$(normalize_spec "$default")"
-      MODELS_SPEC=$ANSWER
-      if [ "$MODELS_SOURCE" = scan ] && [ "$MODELS_SPEC" = all ]; then
-        MODELS_SPEC=$(pi_model_providers | tr '\n' ',' | sed 's/,$//')
+        print_models_warning
+        default=$MODELS_SPEC
+        [ "$MODELS_SET" -eq 1 ] || default=none
+        choose_many "Which model providers do you want to add to Pi's models.json?" "$(pi_model_menu)" "$(normalize_spec "$default")"
+        MODELS_SPEC=$ANSWER
       fi
     fi
   else
@@ -595,7 +740,11 @@ print_summary() {
     if [ "$SCOPE" = "project" ]; then
       printf '  Model adapter: local-models (automatic)\n'
     fi
-    printf '  Models:      %s (%s source)\n' "$MODELS_SPEC" "$MODELS_SOURCE"
+    if [ "$MODELS_SOURCE" = scan ] && [ "$MODELS_SPEC" != none ]; then
+      printf '  Models:      %s (scan, %s mode)\n' "$MODELS_SPEC" "$MODELS_MERGE"
+    else
+      printf '  Models:      %s (%s source)\n' "$MODELS_SPEC" "$MODELS_SOURCE"
+    fi
   fi
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '  Dry run:     no files are written\n'
@@ -739,12 +888,8 @@ if [ "$INTERACTIVE" -eq 1 ]; then
     ''|project|global) ;;
     *) die "scope must be project or global" ;;
   esac
-  if [ "$AGENTS_SET" -eq 0 ]; then
-    if [ "$SKILLS_SET" -eq 1 ]; then AGENTS_SPEC=none; else AGENTS_SPEC=all; fi
-  fi
-  if [ "$SKILLS_SET" -eq 0 ]; then
-    if [ "$AGENTS_SET" -eq 1 ]; then SKILLS_SPEC=none; else SKILLS_SPEC=all; fi
-  fi
+  if [ "$AGENTS_SET" -eq 0 ]; then AGENTS_SPEC=none; fi
+  if [ "$SKILLS_SET" -eq 0 ]; then SKILLS_SPEC=none; fi
   AGENTS_SPEC=$(normalize_spec "$AGENTS_SPEC")
   SKILLS_SPEC=$(normalize_spec "$SKILLS_SPEC")
   TARGET=$(cd -- "$TARGET" 2>/dev/null && pwd) || die "target directory does not exist: $TARGET"
@@ -1106,18 +1251,21 @@ install_pi_extensions() {
 
 install_pi_models() {
   local provider
+  local -a args
   [ "$MODELS_SPEC" != "none" ] || return 0
-  set --
+  args=()
   while IFS= read -r provider; do
     selected "$provider" "$MODELS_SPEC" || continue
-    set -- ${1+"$@"} "$provider"
+    args+=("$provider")
   done < <(pi_model_providers)
   if [ "$MODELS_SOURCE" = scan ]; then
-    set -- --update-base-url --label "${DEST#"$TARGET"/}/models.json" "$MODELS_CATALOG" "$DEST/models.json" "$@"
-  else
-    set -- --label "${DEST#"$TARGET"/}/models.json" "$MODELS_CATALOG" "$DEST/models.json" "$@"
+    args=(--update-base-url ${args[@]+"${args[@]}"})
+    if [ "$MODELS_MERGE" = clean ]; then
+      args=(--replace "${args[@]}")
+    fi
   fi
-  run_pi_config merge-models "$@" || die "could not update $DEST/models.json"
+  run_pi_config merge-models --label "${DEST#"$TARGET"/}/models.json" "$MODELS_CATALOG" "$DEST/models.json" ${args[@]+"${args[@]}"} \
+    || die "could not update $DEST/models.json"
 }
 
 install_pi() {
