@@ -866,6 +866,27 @@ copy_tree() {
   log "$done_verb ${destination#$TARGET/}"
 }
 
+# skill_has_support <skill-dir>: true when a skill bundles files besides SKILL.md (scripts/, assets/, references/).
+skill_has_support() {
+  [ -n "$(find "$1" -mindepth 1 -type f ! -path "$1/SKILL.md" ! -name .DS_Store -print -quit)" ]
+}
+
+# copy_skill_support <skill-dir> <destination>: copy everything except SKILL.md (which Pi rewrites itself),
+# keeping permissions so bundled scripts stay executable.
+copy_skill_support() {
+  local source=$1 destination=$2 file relative
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "COPY SUPPORT FILES $source -> $destination (everything except SKILL.md)"
+    return
+  fi
+  while IFS= read -r -d '' file; do
+    relative=${file#"$source"/}
+    mkdir -p "$(dirname -- "$destination/$relative")"
+    cp -p "$file" "$destination/$relative"
+  done < <(find "$source" -type f ! -path "$source/SKILL.md" ! -name .DS_Store -print0)
+  log "installed ${destination#$TARGET/} (supporting files)"
+}
+
 selected() {
   local name=$1 spec=$2 item
   [ "$spec" = "all" ] && return 0
@@ -1057,12 +1078,21 @@ install_claude() {
       runtime=$(runtime_name "$name") || continue
       selected "$runtime" "$SKILLS_SPEC" || continue
       if [ -f "$file/SKILL.md" ]; then
-        render_claude_command "$file/SKILL.md" "$DEST/commands/$runtime.md"
+        if skill_has_support "$file"; then
+          # A command is a single file and would lose scripts/assets: install a native skill directory instead.
+          copy_tree "$file" "$DEST/skills/$runtime"
+        else
+          render_claude_command "$file/SKILL.md" "$DEST/commands/$runtime.md"
+        fi
       else
         for child in "$file"/*; do
           [ -f "$child/SKILL.md" ] || continue
           child_name=$(basename "$child")
-          render_claude_command "$child/SKILL.md" "$DEST/commands/$child_name.md"
+          if skill_has_support "$child"; then
+            copy_tree "$child" "$DEST/skills/$child_name"
+          else
+            render_claude_command "$child/SKILL.md" "$DEST/commands/$child_name.md"
+          fi
         done
       fi
     done
@@ -1141,11 +1171,13 @@ install_pi() {
       selected "$runtime" "$SKILLS_SPEC" || continue
       if [ -f "$file/SKILL.md" ]; then
         render_pi_skill "$file/SKILL.md" "$DEST/skills/$runtime/SKILL.md"
+        if skill_has_support "$file"; then copy_skill_support "$file" "$DEST/skills/$runtime"; fi
       else
         for child in "$file"/*; do
           [ -f "$child/SKILL.md" ] || continue
           child_name=$(basename "$child")
           render_pi_skill "$child/SKILL.md" "$DEST/skills/$child_name/SKILL.md"
+          if skill_has_support "$child"; then copy_skill_support "$child" "$DEST/skills/$child_name"; fi
         done
       fi
     done
