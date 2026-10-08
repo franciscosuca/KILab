@@ -15,12 +15,17 @@ type CatalogProvider = Omit<ProviderConfig, "models"> & {
 export default function (pi: ExtensionAPI) {
   const agentDir =
     process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".pi", "agent");
+  const agentModelsPath = join(agentDir, "models.json");
   const catalogPath = [
     join(process.cwd(), ".pi", "models.json"),
-    join(agentDir, "models.json"),
+    agentModelsPath,
   ].find((path) => existsSync(path));
 
   if (!catalogPath) return;
+  // Pi already loads the agent-directory models.json natively; registering
+  // those providers again would list every model twice. Only bridge the
+  // project-level .pi/models.json, which Pi does not read on its own.
+  if (catalogPath === agentModelsPath) return;
 
   const { providers } = JSON.parse(readFileSync(catalogPath, "utf8")) as {
     providers: Record<string, CatalogProvider>;

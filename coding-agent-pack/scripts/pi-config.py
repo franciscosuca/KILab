@@ -15,6 +15,7 @@ import stat
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 from typing import Any
 
 
@@ -42,6 +43,22 @@ def catalog_providers(path: Path) -> dict[str, dict[str, Any]]:
 
 def model_ids(models: list[Any]) -> list[str]:
     return [model["id"] for model in models if isinstance(model, dict) and isinstance(model.get("id"), str)]
+
+
+def endpoint_key(base_url: Any) -> str | None:
+    """Normalize a provider base URL so the same server compares equal.
+
+    ``localhost``, ``127.0.0.1``, and ``::1`` are treated as one local
+    server; the scheme, ``/v1`` suffix, and trailing slashes are ignored.
+    """
+    if not isinstance(base_url, str) or not base_url:
+        return None
+    parsed = urlsplit(base_url)
+    host = parsed.hostname
+    if host is None:
+        return None
+    host = "local" if host in {"localhost", "127.0.0.1", "::1"} else host.lower()
+    return f"{host}:{parsed.port or ''}"
 
 
 def save_atomically(path: Path, payload: dict[str, Any]) -> None:
@@ -94,16 +111,29 @@ def merge_models(args: argparse.Namespace) -> int:
     parts = []
     for name in dict.fromkeys(args.providers):
         source = catalog[name]
+        target_name = name
         target = providers.get(name)
+        if target is None:
+            # An existing provider may already point at the same server under
+            # a different name (for example 'lm-studio' vs 'lmstudio'). Merge
+            # into it instead of adding a second provider, which would list
+            # the same models twice in Pi's model picker.
+            key = endpoint_key(source.get("baseUrl"))
+            if key is not None:
+                for existing_name, existing in providers.items():
+                    if isinstance(existing, dict) and endpoint_key(existing.get("baseUrl")) == key:
+                        target_name = existing_name
+                        target = existing
+                        break
         if target is None:
             providers[name] = copy.deepcopy(source)
             parts.append(f"{name}: new provider, +{len(model_ids(source['models']))} models")
             continue
         if not isinstance(target, dict):
-            raise ValueError(f"{args.config}: provider '{name}' must be an object")
+            raise ValueError(f"{args.config}: provider '{target_name}' must be an object")
         models = target.setdefault("models", [])
         if not isinstance(models, list):
-            raise ValueError(f"{args.config}: provider '{name}' has a non-list 'models' value")
+            raise ValueError(f"{args.config}: provider '{target_name}' has a non-list 'models' value")
 
         changes = []
         for key, value in source.items():
@@ -115,12 +145,29 @@ def merge_models(args: argparse.Namespace) -> int:
             elif key == "baseUrl" and args.update_base_url and target[key] != value:
                 target[key] = copy.deepcopy(value)
                 changes.append("baseUrl updated")
+        # Remove already-duplicated entries, then add what is missing.
+        seen: set[str] = set()
+        deduped: list[Any] = []
+        for model in models:
+            model_id = model.get("id") if isinstance(model, dict) else None
+            if model_id is None:
+                deduped.append(model)
+                continue
+            if model_id in seen:
+                continue
+            seen.add(model_id)
+            deduped.append(model)
+        duplicates = len(models) - len(deduped)
+        if duplicates:
+            models[:] = deduped
+            changes.append(f"-{duplicates} duplicate models")
         present = set(model_ids(models))
         added = [model for model in source["models"] if isinstance(model, dict) and model.get("id") not in present]
         models.extend(copy.deepcopy(added))
         if added:
             changes.append(f"+{len(added)} models")
-        parts.append(f"{name}: {', '.join(changes) if changes else 'up to date'}")
+        label = target_name if target_name == name else f"{name} -> {target_name} (same endpoint)"
+        parts.append(f"{label}: {', '.join(changes) if changes else 'up to date'}")
     return finish(args, config, before, parts)
 
 
