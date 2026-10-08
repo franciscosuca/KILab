@@ -266,23 +266,33 @@ print_models_warning() {
 }
 
 scan_pi_model_catalog() {
-  local options provider label default_url default_port port
+  local options provider label default_url default_port port default=both
   local -a sync_args
 
   printf '\nLive scanning supports only LM Studio and oMLX. Start each selected server before continuing.\n'
   options='both (LM Studio and oMLX)
 lmstudio (LM Studio only)
-omlx (oMLX only)'
-  choose_one "Which local servers should I scan?" "$options" both
-  case "$ANSWER" in
-    both) SCAN_PROVIDER_SPEC=all ;;
-    *) SCAN_PROVIDER_SPEC=$ANSWER ;;
-  esac
+omlx (oMLX only)
+none (Skip live model scanning)'
+  while :; do
+    choose_one "Which local servers should I scan?" "$options" "$default"
+    case "$ANSWER" in
+      none)
+        MODELS_SPEC=none
+        MODELS_SOURCE=none
+        printf '\nSkipping live model scanning.\n'
+        return 0
+        ;;
+      both) SCAN_PROVIDER_SPEC=all ;;
+      *) SCAN_PROVIDER_SPEC=$ANSWER ;;
+    esac
 
-  MODEL_SCAN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/kilab-pi-model-scan.XXXXXX") \
-    || die 'could not create a temporary model-scan directory'
-  chmod 700 "$MODEL_SCAN_DIR"
-  python3 - "$PI_ADAPTER/models.json" "$MODEL_SCAN_DIR/models.json" "$SCAN_PROVIDER_SPEC" "$(pi_target_models_path)" <<'PY'
+    if [ -z "$MODEL_SCAN_DIR" ]; then
+      MODEL_SCAN_DIR=$(mktemp -d "${TMPDIR:-/tmp}/kilab-pi-model-scan.XXXXXX") \
+        || die 'could not create a temporary model-scan directory'
+      chmod 700 "$MODEL_SCAN_DIR"
+    fi
+    python3 - "$PI_ADAPTER/models.json" "$MODEL_SCAN_DIR/models.json" "$SCAN_PROVIDER_SPEC" "$(pi_target_models_path)" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -303,41 +313,44 @@ for name in names:
 Path(destination_path).write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
 PY
 
-  sync_args=(--config "$MODEL_SCAN_DIR/models.json" --require-api)
-  for provider in lmstudio omlx; do
-    case ",$SCAN_PROVIDER_SPEC," in
-      ,all,|*,"$provider",*) ;;
-      *) continue ;;
-    esac
-    default_url=$(pi_model_base_url "$provider")
-    default_port=$(url_port "$default_url")
-    [ -n "$default_port" ] || die "could not determine the default $provider port from the template"
-    if [ "$provider" = lmstudio ]; then label='LM Studio'; else label='oMLX'; fi
-    printf '\n%s endpoint shown in the template: %s\n' "$label" "$default_url"
-    while :; do
-      ask "$label server port [$default_port]: "
-      port=${ANSWER:-$default_port}
-      if [[ "$port" =~ ^[0-9]{1,5}$ ]] && ((10#$port >= 1 && 10#$port <= 65535)); then
-        break
+    sync_args=(--config "$MODEL_SCAN_DIR/models.json" --require-api)
+    for provider in lmstudio omlx; do
+      case ",$SCAN_PROVIDER_SPEC," in
+        ,all,|*,"$provider",*) ;;
+        *) continue ;;
+      esac
+      default_url=$(pi_model_base_url "$provider")
+      default_port=$(url_port "$default_url")
+      [ -n "$default_port" ] || die "could not determine the default $provider port from the template"
+      if [ "$provider" = lmstudio ]; then label='LM Studio'; else label='oMLX'; fi
+      printf '\n%s endpoint shown in the template: %s\n' "$label" "$default_url"
+      while :; do
+        ask "$label server port [$default_port]: "
+        port=${ANSWER:-$default_port}
+        if [[ "$port" =~ ^[0-9]{1,5}$ ]] && ((10#$port >= 1 && 10#$port <= 65535)); then
+          break
+        fi
+        printf 'Enter a port from 1 to 65535.\n'
+      done
+      if [ "$provider" = lmstudio ]; then
+        default_url="http://localhost:$port/v1"
+        LMSTUDIO_SCAN_URL=$default_url
+      else
+        default_url="http://127.0.0.1:$port/v1"
+        OMLX_SCAN_URL=$default_url
       fi
-      printf 'Enter a port from 1 to 65535.\n'
+      sync_args+=(--provider "$provider" --base-url "$provider=$default_url")
     done
-    if [ "$provider" = lmstudio ]; then
-      default_url="http://localhost:$port/v1"
-      LMSTUDIO_SCAN_URL=$default_url
-    else
-      default_url="http://127.0.0.1:$port/v1"
-      OMLX_SCAN_URL=$default_url
-    fi
-    sync_args+=(--provider "$provider" --base-url "$provider=$default_url")
-  done
 
-  printf '\nQuerying the selected local server APIs...\n'
-  if ! python3 "$PI_MODEL_SYNC" "${sync_args[@]}"; then
-    die 'live model scan failed; check that the selected server(s) are running and the ports/API keys are correct'
-  fi
-  MODELS_CATALOG="$MODEL_SCAN_DIR/models.json"
-  MODELS_SOURCE=scan
+    printf '\nQuerying the selected local server APIs...\n'
+    if python3 "$PI_MODEL_SYNC" "${sync_args[@]}"; then
+      MODELS_CATALOG="$MODEL_SCAN_DIR/models.json"
+      MODELS_SOURCE=scan
+      return 0
+    fi
+    printf '\nLive model scan failed. Check that the selected server(s) are running, then choose again or select "none" to skip.\n'
+    default=""
+  done
 }
 
 # select_scanned_models: numbered per-provider pick from the scan catalog.
@@ -680,12 +693,14 @@ scan (Discover models currently available on this machine)" template
       MODELS_SOURCE=$ANSWER
       if [ "$MODELS_SOURCE" = scan ]; then
         scan_pi_model_catalog
-        print_models_warning
-        select_scanned_models
-        if [ "$MODELS_SPEC" != none ] && pi_target_has_selected_models; then
-          choose_one "The selected providers already have models in $(pi_target_models_path). What should happen to them?" "extend (keep the existing models and add the selected ones)
+        if [ "$MODELS_SOURCE" = scan ]; then
+          print_models_warning
+          select_scanned_models
+          if [ "$MODELS_SPEC" != none ] && pi_target_has_selected_models; then
+            choose_one "The selected providers already have models in $(pi_target_models_path). What should happen to them?" "extend (keep the existing models and add the selected ones)
 clean (remove the current models of the selected providers, then install the selection)" extend
-          MODELS_MERGE=$ANSWER
+            MODELS_MERGE=$ANSWER
+          fi
         fi
         printf '\n'
       else
