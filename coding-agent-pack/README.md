@@ -77,15 +77,15 @@ Pi does not consume Copilot `.agent.md` files directly. During installation, cor
 The installer never copies Pi authentication. Optional Pi add-ons and local model providers are chosen with `--extensions` and `--models`, or in the interactive questionnaire:
 
 - **Project model support:** `local-models.ts` is installed automatically for project-scoped Pi installs so Pi can load the project's `.pi/models.json`. It is not a selectable extension option. Global installs omit it because Pi reads its global `models.json` natively.
-- **Optional extensions/packages:** the `--extensions` selector controls optional bundled extensions and Pi packages. Packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed` and `pi-context`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
-- **Models:** non-interactive `--models` commands use the static LM Studio/oMLX catalog in `catalog/adapters/pi/models.json`. The interactive questionnaire asks whether to use that template or scan live models from the selected local servers.
+- **Optional extensions/packages:** the `--extensions` selector controls optional bundled extensions and Pi packages. Packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed` and `pi-context-usage`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
+- **Models:** non-interactive `--models` commands use the static LM Studio/oMLX catalog in `catalog/adapters/pi/models.json`. The interactive questionnaire asks whether to use that template or scan live models from the selected local servers. After a scan you pick models per provider from a numbered list — `all`, `lmlink`, `local`, or comma-separated numbers — and, when the target already has models for those providers, whether to `extend` it (merge) or `clean` it (replace, which drops stale model IDs).
 
 Both merges only add what is missing. Existing providers, provider settings such as `baseUrl` and `apiKey`, models, packages, and other settings are kept, so re-running the installer is safe. Updating `settings.json` or `models.json` requires Python 3.7 or later.
 
 #### Local models (LM Studio and oMLX)
 
 > [!WARNING]
-> The installer only adds model IDs to Pi's `models.json`; it does not download any model. Download each model in LM Studio or oMLX before selecting it in Pi.
+> The installer only adds model IDs to Pi's `models.json`; it does not download models. Download local models in LM Studio or oMLX before selecting them. Interactive scan results marked `[lmlink]` run on another LM Link device and need that device online instead of a local download.
 
 | Provider | Endpoint in the catalog | Download models with |
 |---|---|---|
@@ -110,7 +110,7 @@ Both merges only add what is missing. Existing providers, provider settings such
 
 #### Sync local provider model IDs (optional)
 
-The pack includes `scripts/sync-pi-models.py` to refresh the `models` arrays in Pi's global `~/.pi/agent/models.json` from the configured LM Studio and oMLX endpoints. It is an opt-in maintenance helper; the installer never runs it automatically and it does not change provider URLs or API keys. It uses Python 3 and the standard library.
+The pack includes `scripts/sync-pi-models.py` to refresh the `models` arrays in Pi's global `~/.pi/agent/models.json` from the configured LM Studio and oMLX endpoints. During scans, the LM Studio server list is merged with the `lms ls` catalogue, which exposes LM Link devices: models hosted on another device — or resolved to it through the LM Link preferred-device setting (`lms link status`) — are printed with `[lmlink]`, and scan-generated entries carry the suffix as a Pi display name so the model picker shows where each model runs. If the `lms` CLI cannot be queried, only the server's own list is used. This is an opt-in maintenance helper; the installer never runs it automatically and it does not change provider URLs or API keys. It uses Python 3 and the standard library.
 
 Preview the discovered models, then apply the update:
 
@@ -123,7 +123,7 @@ Run those commands from `coding-agent-pack/`. LM Studio's API must be available 
 
 ## Installation
 
-Run the script from this directory or through a cloned KILab source checkout. Without arguments, in a terminal, it starts an interactive questionnaire. It asks for the harness, scope, project directory, agents, skills, and, for Pi, optional extensions/packages and local model choices. For Pi it first asks whether you want to use local LLM providers at all; if you decline, model setup is skipped and the script suggests running `/login` inside Pi to connect a built-in provider. If you accept, choose the static template or live discovery from LM Studio/oMLX; live discovery requires the selected server(s) to be running and lets you correct their ports. Press Enter to accept the default shown in brackets. Before anything is written, the script prints a summary, a warning about the files it will overwrite, and a one-time command, then asks for confirmation. A command printed after a live scan uses the static template IDs; the scanned IDs are specific to the current machine.
+Run the script from this directory or through a cloned KILab source checkout. Without arguments, in a terminal, it starts an interactive questionnaire. It asks for the harness, scope, project directory, agents, skills, and, for Pi, optional extensions/packages and local model choices. Agent, skill, and model-provider selection prompts default to `none`, so pressing Enter skips those selections; type `all` at a selection prompt, or use `--all` to select every agent and skill. For Pi it first asks whether you want to use local LLM providers at all; if you decline, model setup is skipped and the script suggests running `/login` inside Pi to connect a built-in provider. If you accept, choose the static template or live discovery from LM Studio/oMLX; live discovery lets you correct server ports and, if a scan fails, returns to the server choices so you can retry with another server or choose `none` to skip. Press Enter to accept the default shown in brackets. Before anything is written, the script prints a summary, a warning about the files it will overwrite, and a one-time command, then asks for confirmation. A command printed after a live scan uses the static template IDs; the scanned IDs are specific to the current machine.
 
 ```bash
 ./scripts/install-pack.sh
@@ -146,7 +146,7 @@ For a one-time command without questions, pass `--harness` and the selectors:
   --skills feature-planning,vitest-setup
 ```
 
-The selectors accept `all`, `none`, or a comma-separated list. If neither selector is supplied, all core agents and skills are installed.
+The selectors accept `all`, `none`, or a comma-separated list. In non-interactive commands, if neither selector is supplied, all core agents and skills are installed; interactive prompts default to `none`.
 
 ### Claude and Pi scope selection
 
@@ -164,7 +164,7 @@ When `--scope` is omitted, the script asks whether to install project-local or g
 
 ```bash
 ./scripts/install-pack.sh --harness pi --scope global --all --extensions all --models lmstudio,omlx
-./scripts/install-pack.sh --harness pi --scope project --skills none --extensions pi-token-speed,pi-context
+./scripts/install-pack.sh --harness pi --scope project --skills none --extensions pi-token-speed,pi-context-usage
 ```
 
 `--extensions` accepts `all`, `none`, or optional extension and package names from `--list`; it defaults to `none` in the current catalog. The project-only `local-models` adapter is installed automatically and is not a selectable option. `--models` accepts `all`, `none`, or provider names (`lmstudio`, `omlx`); it defaults to `none`. Both options require `--harness pi`. Unknown names stop the installation before any file is written. When models are selected, the script prints the model IDs and a reminder to download them manually.
