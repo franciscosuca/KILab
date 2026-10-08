@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/franciscosuca/KILab/compare/v2.6.0...v2.6.1) (2026-10-08)
+
+### Bug Fixes
+
+* **pi local models getting duplicated.:** fix: pi local models getting duplicated. ([2305f3b](https://github.com/franciscosuca/KILab/commit/2305f3b76f8786f88ccc20d02d173e674573d012))
+* **pi local models getting duplicated. (#26):** fix: pi local models getting duplicated. (#26) ([c161558](https://github.com/franciscosuca/KILab/commit/c161558c3a178874da237a4b18b740f746cee8ad)), closes [#26](https://github.com/franciscosuca/KILab/issues/26)
+
 ## [2.6.0](https://github.com/franciscosuca/KILab/compare/v2.5.0...v2.6.0) (2026-10-03)
 
 ### Features
