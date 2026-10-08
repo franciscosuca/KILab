@@ -1,3 +1,14 @@
+## [2.7.0](https://github.com/franciscosuca/KILab/compare/v2.6.1...v2.7.0) (2026-10-08)
+
+### Features
+
+* **enhance model installer with display names, lmlink support, and merge mode:** feat(pi): enhance model installer with display names, lmlink support, and merge mode ([c14c68b](https://github.com/franciscosuca/KILab/commit/c14c68ba3a2d6d4ca5cf8aef2c4bb90e586b8015))
+
+### Bug Fixes
+
+* **extension for token usage:** fix: extension for token usage ([acfd799](https://github.com/franciscosuca/KILab/commit/acfd799583f439ccb9377cc54524da59035771d9))
+* **recover from unavailable model servers:** fix(pi): recover from unavailable model servers ([eff3b55](https://github.com/franciscosuca/KILab/commit/eff3b5581760408a64b862b49a5dce4219972c75))
+
 ## [2.6.1](https://github.com/franciscosuca/KILab/compare/v2.6.0...v2.6.1) (2026-10-08)
 
 ### Bug Fixes
