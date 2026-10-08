@@ -77,7 +77,7 @@ Pi does not consume Copilot `.agent.md` files directly. During installation, cor
 The installer never copies Pi authentication. Optional Pi add-ons and local model providers are chosen with `--extensions` and `--models`, or in the interactive questionnaire:
 
 - **Project model support:** `local-models.ts` is installed automatically for project-scoped Pi installs so Pi can load the project's `.pi/models.json`. It is not a selectable extension option. Global installs omit it because Pi reads its global `models.json` natively.
-- **Optional extensions/packages:** the `--extensions` selector controls optional bundled extensions and Pi packages. Packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed` and `pi-context`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
+- **Optional extensions/packages:** the `--extensions` selector controls optional bundled extensions and Pi packages. Packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed` and `pi-context-usage`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
 - **Models:** non-interactive `--models` commands use the static LM Studio/oMLX catalog in `catalog/adapters/pi/models.json`. The interactive questionnaire asks whether to use that template or scan live models from the selected local servers.
 
 Both merges only add what is missing. Existing providers, provider settings such as `baseUrl` and `apiKey`, models, packages, and other settings are kept, so re-running the installer is safe. Updating `settings.json` or `models.json` requires Python 3.7 or later.
@@ -164,7 +164,7 @@ When `--scope` is omitted, the script asks whether to install project-local or g
 
 ```bash
 ./scripts/install-pack.sh --harness pi --scope global --all --extensions all --models lmstudio,omlx
-./scripts/install-pack.sh --harness pi --scope project --skills none --extensions pi-token-speed,pi-context
+./scripts/install-pack.sh --harness pi --scope project --skills none --extensions pi-token-speed,pi-context-usage
 ```
 
 `--extensions` accepts `all`, `none`, or optional extension and package names from `--list`; it defaults to `none` in the current catalog. The project-only `local-models` adapter is installed automatically and is not a selectable option. `--models` accepts `all`, `none`, or provider names (`lmstudio`, `omlx`); it defaults to `none`. Both options require `--harness pi`. Unknown names stop the installation before any file is written. When models are selected, the script prints the model IDs and a reminder to download them manually.
