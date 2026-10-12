@@ -4,33 +4,37 @@ Welcome! These feature-planning skills turn a request into a clear plan, hand ap
 
 ## Getting Started
 
-1. Install the skills for your harness (`copilot`, `claude`, or `pi`):
+1. Choose `PLAN_ROOT`, an absolute folder where plans will live. Export it or include it in your request:
 
    ```bash
-   scripts/install-pack.sh --harness copilot --scope project --skills feature-planning
-   ```
-
-2. Choose `PLAN_ROOT`, an absolute folder where plans will live. Export it or include it in your request:
-
-   ```bash
-   export PLAN_ROOT=/Users/you/plans
+   export PLAN_ROOT=path/to/plans
    ```
 
    Agents ask for this path rather than guessing it.
 
+2. Open your harness (`copilot`, `claude`, or `pi`) before running any `/plan-*` command.
+
 3. Initialize the folder once:
 
    ```text
-   /plan-init /Users/you/plans
+   /plan-init path/to/plans
    ```
 
    This creates `README.md` and the `drafts`, `next`, `open`, `done`, and `discarded` folders.
 
-4. Capture your first request:
+4. Add your first plan with an ID and name:
 
    ```text
-   /plan-add <your request>
+   /plan-add <plan-id> <plan-name>
    ```
+
+5. Write your request for the plan:
+
+   ```text
+   /plan-write <plan-id> <written_request>
+   ```
+
+From here on, the agent will tell you which command to use to continue the workflow. The diagram below shows the full workflow.
 
 ## Plan Bundle Structure
 
@@ -41,13 +45,12 @@ Each plan is a bundle. The plan file is the only lifecycle owner; supporting doc
 ├── <plan-slug>.md
 ├── context/
 │   └── request.md
-├── workflows/
 └── work-packages/
 ```
 
-`workflows/` and `work-packages/` remain empty during the initial draft pass. The plan file is created first and includes empty Related documents subsections for Context, Work packages, and Workflows.
+New bundles do not create a separate `workflows/` directory or `Workflows` subsection. The plan file includes Related documents subsections for Context and Work packages. The original request is preserved in `context/request.md`, and the `work-packages/` directory starts empty. Keep implementation phases and process details in the canonical plan or its requested work packages rather than in separate workflow documents. Work packages are created only after the user explicitly requests them.
 
-The original request is preserved in `context/request.md`. Workflow documents are created only after the user approves the plan. Work packages are created only after the user explicitly requests them.
+Existing bundles may contain a legacy `workflows/` directory or `Workflows` subsection. Preserve those artifacts during ordinary commands; do not create, rewrite, or delete them unless the user explicitly requests it.
 
 ## Lifecycle States And Commands
 
@@ -120,8 +123,8 @@ Stage-by-stage prompt examples are in [EXAMPLES.md](EXAMPLES.md).
 - Never invent an issue number. Use `XXXX` when it is missing.
 - Never store credentials, tokens, or secret-bearing conversation text in a plan.
 - Do not rename or rewrite legacy plans during initialization.
-- Do not treat context, workflow, or work-package files as separate lifecycle plans.
-- Do not create workflows before plan approval.
+- Do not treat context or work-package files as separate lifecycle plans.
+- Do not create plan-bundle `workflows/` directories or separate workflow documents.
 - Do not create work packages without an explicit user request.
 - Require explicit WP selection and recorded scope approval for bounded dispatch; never widen it, auto-run prerequisites, or start the next WP automatically.
 - Keep shared blockers at plan level; do not hide them as deferred-WP gates.

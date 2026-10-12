@@ -49,11 +49,12 @@ Each new plan is a bundle whose directory and canonical file share the same slug
   <plan-slug>.md
   context/
     request.md
-  workflows/
   work-packages/
 ```
 
-`context/`, `workflows/`, and `work-packages/` may be empty. They are supporting-document areas, not independent plans. The canonical Markdown file is the only lifecycle and status owner. Move the complete bundle between lifecycle folders; never move only the canonical file.
+`context/` stores the original request and related context; `work-packages/` contains optional supporting definitions. They are supporting-document areas, not independent plans. The canonical Markdown file is the only lifecycle and status owner. Move the complete bundle between lifecycle folders; never move only the canonical file.
+
+New plan bundles do not create a separate `workflows/` directory or `Workflows` section. Existing bundles may contain those legacy artifacts; preserve them and their links during ordinary commands. Do not create, rewrite, or delete them unless the user explicitly asks to migrate or clean them up.
 
 The lifecycle folder is the source of truth and must match canonical frontmatter `status`:
 
@@ -123,12 +124,12 @@ The canonical draft follows this structure:
 6. `## Steps` with ordered phases, exact files or symbols, negative paths, and acceptance criteria.
 7. `## Verification` with exact commands, prerequisites, and expected results.
 8. `## Estimations` in developer-hours, excluding external wait time.
-9. `## Related documents` with `Context`, `Work packages`, and `Workflows` subsections.
+9. `## Related documents` with `Context` and `Work packages` subsections.
 10. `## History`: append-only log with one line per command that changes the plan, formatted `- YYYY-MM-DD <command>: <result>`. `/plan-add` creates it; later commands append and never rewrite earlier lines.
 
 The Related documents subsections must exist in the initial canonical file but may be empty. Add links only when the corresponding supporting files are created.
 
-The first planning input is preserved in `context/request.md` before the canonical summary is written. The initial `plan-write` pass must not create workflow or work-package documents. Workflows require explicit canonical-plan approval; work packages require a separate explicit user request.
+The first planning input is preserved in `context/request.md` before the canonical summary is written. The initial `plan-write` pass must not create work-package documents. Work packages require a separate explicit user request.
 
 Supporting documents do not require YAML frontmatter. They begin with the shared issue tag. A work package begins with its title and then `## Goal`; do not insert automatic Plan mapping, Route model, or Source references blocks between the title and Goal.
 

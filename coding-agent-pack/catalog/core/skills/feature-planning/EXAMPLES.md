@@ -24,7 +24,7 @@ Capture this request as a plan bundle:
 - Request: expose application instances through the extension routes
 - Constraints: preserve existing route behavior and add focused verification
 
-Create plan-2851-<inferred-name>/ under $PLAN_ROOT/drafts/, preserve the request in context/request.md, and create the canonical Markdown skeleton. Leave workflows/ and work-packages/ empty. Do not implement product code.
+Create plan-2851-<inferred-name>/ under $PLAN_ROOT/drafts/, preserve the request in context/request.md, and create the canonical Markdown skeleton. Leave work-packages/ empty. Do not implement product code.
 ```
 
 Without an issue number:
@@ -36,7 +36,7 @@ Capture this request as a plan bundle:
 - Request: validate dynamic request bodies before forwarding them
 - Constraints: preserve current error responses where compatible
 
-No issue number was provided. Use plan-XXXX-<inferred-name>/, infer a lowercase name of at most four words, and do not guess a number. Preserve the request in context/request.md, create the canonical Markdown skeleton, leave workflows/ and work-packages/ empty, and do not implement product code.
+No issue number was provided. Use plan-XXXX-<inferred-name>/, infer a lowercase name of at most four words, and do not guess a number. Preserve the request in context/request.md, create the canonical Markdown skeleton, leave work-packages/ empty, and do not implement product code.
 ```
 
 ### 3. Investigate and write the canonical plan
@@ -44,22 +44,16 @@ No issue number was provided. Use plan-XXXX-<inferred-name>/, infer a lowercase 
 ```text
 /plan-write plan-XXXX-dynamic-body-validation
 
-First append this input and its references to the plan bundle's context/request.md. Read the bundle and its sources. Inspect the smallest controlling code path, neighboring tests, configuration, history, and affected repository boundaries. Write or update only the canonical Markdown file using Status, Summary, Diagram, Steps, Verification, Estimations, and Related documents with empty Context, Work packages, and Workflows subsections. Do not create workflows or work packages. Keep the bundle in drafts until the canonical plan is approved.
+First append this input and its references to the plan bundle's context/request.md. Read the bundle and its sources. Inspect the smallest controlling code path, neighboring tests, configuration, history, and affected repository boundaries. Write or update only the canonical Markdown file using Status, Summary, Diagram, Steps, Verification, Estimations, and Related documents with empty Context and Work packages subsections. Do not create work packages. Keep the bundle in drafts until the canonical plan is approved.
 ```
 
-### 4. Create workflows after approval
-
-```text
-Create the workflow documents for the approved canonical plan plan-XXXX-dynamic-body-validation. Store them under its workflows/ directory, tag them with the canonical issue ID, link them from Related documents, and do not create work packages unless separately requested.
-```
-
-### 5. Create work packages on request
+### 4. Create work packages on request
 
 ```text
 Create work packages for the approved canonical plan plan-XXXX-dynamic-body-validation. Split the approved phases into wp-1-<short-description>.md files under work-packages/, begin each with the issue tag, title, and ## Goal, link them from Related documents, and do not add automatic Plan mapping or Source reference blocks.
 ```
 
-### 6. Dispatch an approved plan
+### 5. Dispatch an approved plan
 
 ```text
 /plan-dispatch plan-XXXX-dynamic-body-validation
@@ -85,7 +79,7 @@ Implement WP-1 only. Other WPs are context, not implementation authority. Stop a
 
 After `/plan-sync plan-XXXX-dynamic-body-validation` verifies WP-1, prepare and explicitly dispatch WP-2 using the same commands with `wp-2`. The existing canonical bundle stays in `open/`; resolve dependency and approval gates before proceeding. WP preparation does not authorize execution.
 
-### 7. Report status
+### 6. Report status
 
 ```text
 /plan-status
@@ -99,7 +93,7 @@ Report all canonical plan bundles under $PLAN_ROOT. Validate folder status again
 Quick status for one plan: its folder, the commands already run from its History, flags, and one next command. Read local files only; add `full` to include review and CI state.
 ```
 
-### 8. Synchronize completed work
+### 7. Synchronize completed work
 
 ```text
 /plan-sync plan-XXXX-dynamic-body-validation
@@ -107,7 +101,7 @@ Quick status for one plan: its folder, the commands already run from its History
 Compare the canonical plan and its work packages with implementation, review, CI, external work item, release, and deployment evidence. Update per-WP verification in the canonical Execution scope when present. Keep the complete bundle open while any required WP or plan-level evidence remains; do not infer whole-plan completion from the last dispatched slice. Move it to done only when the completion rule passes, or to discarded only after the Owner or Prompter confirms abandonment. Update the canonical outcome without merging, committing, or automatically dispatching another WP.
 ```
 
-### 9. Learn from completed work
+### 8. Learn from completed work
 
 ```text
 /plan-retro
