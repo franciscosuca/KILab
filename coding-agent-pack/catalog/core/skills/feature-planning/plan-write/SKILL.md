@@ -22,7 +22,7 @@ Read the sibling `plan-spec/SKILL.md` first. Before inspecting drafts, request c
 9. Keep the bundle in `$PLAN_ROOT/drafts/` until the user approves the canonical plan and an implementation agent can proceed without a design question. When ready, move the complete directory to `$PLAN_ROOT/next/<plan-slug>/`, update the canonical status, and leave supporting folders intact. Otherwise keep the bundle in `drafts/`, set `blocked_by`, and name the owner or system.
 10. Update the index. Do not change product code or commit.
 
-Before moving a draft, verify that the bundle and canonical file both follow `plan-<NUMBER>-<NAME>`; the canonical file is `plan-<NUMBER>-<NAME>.md`. Use `plan-XXXX-<inferred-name>` when no issue number was supplied, with at most four lowercase hyphen-separated name words. Do not silently rename an existing legacy draft or bundle; report the mismatch and ask the Prompter before changing it.
+Before moving a draft, verify that the bundle and canonical file both follow `<PREFIX>-<NUMBER>-<NAME>`; the canonical file is `<PREFIX>-<NUMBER>-<NAME>.md`. `<PREFIX>` is the configured plan prefix, defaulting to `plan`; accept existing bundles with other prefixes as they are. Use `<PREFIX>-XXXX-<inferred-name>` when no issue number was supplied, with at most four lowercase hyphen-separated name words. Do not silently rename an existing legacy draft or bundle; report the mismatch and ask the Prompter before changing it.
 
 ## Commands
 

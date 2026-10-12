@@ -46,16 +46,16 @@ Every new plan uses the same slug for its bundle directory and canonical file:
 For plans with an issue number:
 
 ```text
-plan-<NUMBER>-<NAME>/plan-<NUMBER>-<NAME>.md
+<PREFIX>-<NUMBER>-<NAME>/<PREFIX>-<NUMBER>-<NAME>.md
 ```
 
 For plans without an issue number:
 
 ```text
-plan-XXXX-<inferred-name>/plan-XXXX-<inferred-name>.md
+<PREFIX>-XXXX-<inferred-name>/<PREFIX>-XXXX-<inferred-name>.md
 ```
 
-`<NAME>` is a lowercase, hyphen-separated slug inferred from the request, with no more than four words. Work packages use `wp-<N>-<short-description>.md`. Existing legacy files are indexed or archived but are not renamed automatically.
+`<PREFIX>` is the plan prefix configured for the plan root (`Plan prefix:` in `<PLAN_ROOT>/README.md`) or named in the request; when nothing defines one, use `plan`. For example, `Plan prefix: iiot` yields `iiot-1212-balbla/iiot-1212-balbla.md`. `<NAME>` is a lowercase, hyphen-separated slug inferred from the request, with no more than four words. Work packages use `wp-<N>-<short-description>.md`. Existing bundles keep their prefix; legacy files are indexed or archived but are not renamed automatically.
 
 ## Workflow
 

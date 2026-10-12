@@ -76,17 +76,18 @@ Standalone Markdown files directly under a lifecycle folder are legacy plans. In
 The canonical plan bundle and file use the same name:
 
 ```text
-plan-<NUMBER>-<NAME>/
-└── plan-<NUMBER>-<NAME>.md
+<PREFIX>-<NUMBER>-<NAME>/
+└── <PREFIX>-<NUMBER>-<NAME>.md
 ```
 
+- `<PREFIX>` is the plan prefix. Resolve it from the current request, then from the `Plan prefix: <word>` line in `$PLAN_ROOT/README.md`; when neither defines one, use `plan` exactly. A prefix is a single lowercase hyphenated word, for example `iiot` gives `iiot-1212-<NAME>/iiot-1212-<NAME>.md`.
 - `<NUMBER>` is the issue number supplied by the Owner or source request. Never invent a number.
-- When no number is supplied, use `XXXX` exactly: `plan-XXXX-<NAME>/plan-XXXX-<NAME>.md`.
+- When no number is supplied, use `XXXX` exactly: `<PREFIX>-XXXX-<NAME>/<PREFIX>-XXXX-<NAME>.md`.
 - `<NAME>` is a lowercase, hyphen-separated slug inferred from the request when necessary. Use no more than four words.
 - Preserve the source title, identifier, and terminology in the canonical contents and frontmatter even when the filename uses `XXXX`.
 - Work packages use `wp-<N>-<short-description>.md`, for example `wp-1-schema-registry.md`.
 - Supporting documents share the canonical issue tag, for example `#plan-2789`.
-- Existing legacy filenames and folders may be indexed, but must not be renamed automatically.
+- Existing bundles keep the prefix they were created with; changing the configured prefix applies to new plans only. Existing legacy filenames and folders may be indexed, but must not be renamed automatically.
 
 ## Plan Bundle And Canonical File
 

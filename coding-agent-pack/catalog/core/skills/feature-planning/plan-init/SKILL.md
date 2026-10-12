@@ -16,12 +16,14 @@ Read the sibling `plan-spec/SKILL.md` first. Before inspecting or creating anyth
 3. Create the five missing lifecycle folders.
 4. Create `PLAN_ROOT/README.md` only if absent. If it exists, preserve its content and add only missing lifecycle sections.
 5. Index legacy files under `Unclassified legacy plans`. Ask the Prompter before classifying or moving any of them.
-6. Verify the layout and report every created path. New plans must use `plan-<NUMBER>-<NAME>/<plan-<NUMBER>-<NAME>.md`; use the corresponding `plan-XXXX-<inferred-name>` bundle when the number is not supplied. Do not rename legacy files or make a commit.
+6. Verify the layout and report every created path. New plans must use `<PREFIX>-<NUMBER>-<NAME>/<PREFIX>-<NUMBER>-<NAME>.md`; use the corresponding `<PREFIX>-XXXX-<inferred-name>` bundle when the number is not supplied. `<PREFIX>` comes from the `Plan prefix:` line in the index and defaults to `plan`. Do not rename legacy files or make a commit.
 
 The index uses these sections in order:
 
 ```markdown
 # Task Plans
+
+Plan prefix: plan
 
 ## Next
 ## Open
