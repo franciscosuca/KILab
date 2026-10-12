@@ -83,6 +83,24 @@ flowchart LR
 
 `/plan-spec` is the shared contract read by every lifecycle skill. `task-planning` supplies the detailed canonical-plan format used during investigation.
 
+## Lifecycle States And Commands
+
+Each folder under `PLAN_ROOT` is one lifecycle state. Only the command in the last column moves a plan out of its current folder; the other commands read it.
+
+| Folder | Meaning | Reached by | Run next | Leaves through |
+|---|---|---|---|---|
+| `drafts/` | Request captured; investigation or approval pending | `/plan-add` | `/plan-write <slug>` | `/plan-write` after approval → `next/` |
+| `next/` | Approved and implementation-ready; waiting for dispatch | `/plan-write` (approval) | `/plan-dispatch <slug>` | `/plan-dispatch` → `open/` |
+| `open/` | Dispatched or implemented; waiting on review, CI, release, or deployment | `/plan-dispatch` | `/plan-status` to check; `/plan-sync <slug>` once evidence is ready | `/plan-sync` → `done/` when verified, or → `discarded/` when abandonment is confirmed |
+| `done/` | Acceptance criteria and completion evidence verified | `/plan-sync` | `/plan-retro` | Terminal |
+| `discarded/` | Intentionally stopped, with a reason and replacement when one exists | `/plan-sync` after confirmation | `/plan-retro` | Terminal |
+
+Commands that do not change state:
+
+- `/plan-init` creates the root and lifecycle folders once. Run it before any other command.
+- `/plan-status` is read-only. Run it at any point to see which folder each plan is in and what it waits on.
+- `/plan-retro` reads `done/` and `discarded/` and proposes skill edits. It moves nothing.
+
 ## Prompts By Stage
 
 ### 1. Initialize the lifecycle
