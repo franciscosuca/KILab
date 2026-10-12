@@ -57,36 +57,46 @@ For plans without an issue number:
 
 `<PREFIX>` is the plan prefix configured for the plan root (`Plan prefix:` in `<PLAN_ROOT>/README.md`) or named in the request; when nothing defines one, use `plan`. For example, `Plan prefix: iiot` yields `iiot-1212-balbla/iiot-1212-balbla.md`. `<NAME>` is a lowercase, hyphen-separated slug inferred from the request, with no more than four words. Work packages use `wp-<N>-<short-description>.md`. Existing bundles keep their prefix; legacy files are indexed or archived but are not renamed automatically.
 
-## Workflow
+## Lifecycle States And Commands
 
 ```mermaid
 flowchart LR
-    init["/plan-init"] --> root["Configured PLAN_ROOT\nREADME + lifecycle folders"]
-    root --> add["/plan-add"]
-    add --> context["context/request.md"]
-    context --> draft["Canonical plan\nStatus/Summary/Diagram/Steps/Verification/Estimations"]
-    draft --> approval{"User approves\ncanonical plan?"}
-    approval -->|"no"| draft
-    approval -->|"yes"| workflows["workflows/\ncreated when requested"]
-    approval -->|"yes + explicit request"| packages["work-packages/\ncreated on request"]
-    draft -->|"ready"| next["next/<plan-slug>/"]
-    next --> dispatch["/plan-dispatch"]
-    dispatch --> open["open/<plan-slug>/"]
-    open --> status["/plan-status\nread-only"]
-    open --> sync["/plan-sync"]
-    open -->|"prepare another WP"| prepare["/plan-write <slug> wp-N\nbundle stays open"]
-    prepare -->|"WP approved + ready"| dispatch
-    sync -->|"WP verified; scope remains"| open
-    sync -->|"whole plan verified"| done["done/<plan-slug>/"]
-    sync -->|"abandoned with confirmation"| discarded["discarded/<plan-slug>/"]
-    done --> retro["/plan-retro"]
-    discarded --> retro
-    retro -->|"approved workflow improvement"| skills["plan skills"]
+    init["/plan-init"] --> draftsBox
+
+    subgraph draftsBox["drafts/"]
+        add["/plan-add"]
+        writeDraft["/plan-write slug"]
+        add --> writeDraft
+    end
+
+    subgraph nextBox["next/"]
+        dispatchWhole["/plan-dispatch slug"]
+    end
+
+    subgraph openBox["open/"]
+        direction TB
+        status["/plan-status"]
+        sync["/plan-sync slug"]
+        writeWP["/plan-write slug wp-N"]
+        dispatchWP["/plan-dispatch slug wp-N"]
+        status ~~~ sync ~~~ writeWP ~~~ dispatchWP
+        writeWP <--> dispatchWP
+    end
+
+    subgraph doneBox["done/"]
+        retroDone["/plan-retro"]
+    end
+
+    subgraph discardedBox["discarded/"]
+        retroDiscarded["/plan-retro"]
+    end
+
+    writeDraft -->|"approved"| nextBox
+    dispatchWhole -->|"dispatch"| sync
+    dispatchWhole --> writeDraft
+    sync -->|"whole plan verified"| doneBox
+    sync -->|"abandoned, confirmed"| discardedBox
 ```
-
-`/plan-spec` is the shared contract read by every lifecycle skill. `task-planning` supplies the detailed canonical-plan format used during investigation.
-
-## Lifecycle States And Commands
 
 Each folder under `PLAN_ROOT` is one lifecycle state. Only the command in the last column moves a plan out of its current folder; WP preparation, dispatch, and synchronization may update an open plan in place without moving it.
 
@@ -115,118 +125,9 @@ The first approved slice moves the entire bundle `drafts → next → open`. Sub
 
 `/plan-sync` may verify a WP while keeping the parent open. A completed WP, or its merged PR alone, does not complete the feature; every required WP and the combined plan-level criteria must pass before `done`.
 
-## Prompts By Stage
+## Examples
 
-### 1. Initialize the lifecycle
-
-```text
-/plan-init
-
-First resolve and validate an absolute PLAN_ROOT from the current request, explicit repository/workspace configuration, or an environment value visible to the agent. If none is available, ask the user for the path and stop without inspecting or creating anything. Once the gate passes, create or verify README.md and the drafts, next, open, done, and discarded folders. Preserve legacy content, do not rename legacy files, do not modify product code, and do not commit. Report every created or existing path.
-```
-
-### 2. Capture a request as a draft
-
-With an issue number:
-
-```text
-/plan-add
-
-Capture this request as a plan bundle:
-- Issue number: 2851
-- Request: expose application instances through the extension routes
-- Constraints: preserve existing route behavior and add focused verification
-
-Create plan-2851-<inferred-name>/ under $PLAN_ROOT/drafts/, preserve the request in context/request.md, and create the canonical Markdown skeleton. Leave workflows/ and work-packages/ empty. Do not implement product code.
-```
-
-Without an issue number:
-
-```text
-/plan-add
-
-Capture this request as a plan bundle:
-- Request: validate dynamic request bodies before forwarding them
-- Constraints: preserve current error responses where compatible
-
-No issue number was provided. Use plan-XXXX-<inferred-name>/, infer a lowercase name of at most four words, and do not guess a number. Preserve the request in context/request.md, create the canonical Markdown skeleton, leave workflows/ and work-packages/ empty, and do not implement product code.
-```
-
-### 3. Investigate and write the canonical plan
-
-```text
-/plan-write plan-XXXX-dynamic-body-validation
-
-First append this input and its references to the plan bundle's context/request.md. Read the bundle and its sources. Inspect the smallest controlling code path, neighboring tests, configuration, history, and affected repository boundaries. Write or update only the canonical Markdown file using Status, Summary, Diagram, Steps, Verification, Estimations, and Related documents with empty Context, Work packages, and Workflows subsections. Do not create workflows or work packages. Keep the bundle in drafts until the canonical plan is approved.
-```
-
-### 4. Create workflows after approval
-
-```text
-Create the workflow documents for the approved canonical plan plan-XXXX-dynamic-body-validation. Store them under its workflows/ directory, tag them with the canonical issue ID, link them from Related documents, and do not create work packages unless separately requested.
-```
-
-### 5. Create work packages on request
-
-```text
-Create work packages for the approved canonical plan plan-XXXX-dynamic-body-validation. Split the approved phases into wp-1-<short-description>.md files under work-packages/, begin each with the issue tag, title, and ## Goal, link them from Related documents, and do not add automatic Plan mapping or Source reference blocks.
-```
-
-### 6. Dispatch an approved plan
-
-```text
-/plan-dispatch plan-XXXX-dynamic-body-validation
-
-Dispatch the whole canonical plan bundle from $PLAN_ROOT/next/ to an isolated coding agent, only if no WP boundary is recorded. Preserve unrelated worktree changes, run the exact verification commands before and after repairs, record the branch, commits, review URL, checks, deviations, and blockers, and never merge the review.
-```
-
-To prepare only the first defined WP:
-
-```text
-/plan-write plan-XXXX-dynamic-body-validation wp-1
-
-Prepare WP-1 as the first bounded slice in the canonical plan. Record the overall scope/architecture approval and WP-1 approval separately, retain all later WPs, and name exact files, branch/base, dependencies, acceptance criteria, and checks. Do not create supporting files or implement anything. Move the bundle to next only when the selected scope is approved and ready.
-```
-
-Then dispatch that scope explicitly:
-
-```text
-/plan-dispatch plan-XXXX-dynamic-body-validation wp-1
-
-Implement WP-1 only. Other WPs are context, not implementation authority. Stop after its checks and draft-review handoff. Do not start WP-2 or mark the parent plan done.
-```
-
-After `/plan-sync plan-XXXX-dynamic-body-validation` verifies WP-1, prepare and explicitly dispatch WP-2 using the same commands with `wp-2`. The existing canonical bundle stays in `open/`; resolve dependency and approval gates before proceeding. WP preparation does not authorize execution.
-
-### 7. Report status
-
-```text
-/plan-status
-
-Report all canonical plan bundles under $PLAN_ROOT. Validate folder status against canonical frontmatter first, then report execution mode, per-WP readiness/progress where recorded, dependencies, review state, CI or release evidence, and person, decision, system, or implementation blockers. Do not report supporting files as separate plans. This is read-only.
-```
-
-```text
-/plan-status iiot-2789
-
-Quick status for one plan: its folder, the commands already run from its History, flags, and one next command. Read local files only; add `full` to include review and CI state.
-```
-
-### 8. Synchronize completed work
-
-```text
-/plan-sync plan-XXXX-dynamic-body-validation
-
-Compare the canonical plan and its work packages with implementation, review, CI, external work item, release, and deployment evidence. Update per-WP verification in the canonical Execution scope when present. Keep the complete bundle open while any required WP or plan-level evidence remains; do not infer whole-plan completion from the last dispatched slice. Move it to done only when the completion rule passes, or to discarded only after the Owner or Prompter confirms abandonment. Update the canonical outcome without merging, committing, or automatically dispatching another WP.
-```
-
-### 9. Learn from completed work
-
-```text
-/plan-retro
-
-Review recently done and discarded canonical plan bundles, work-package corrections, implementation-agent changes, review feedback, CI failures, commits, and available session history. Identify repeated workflow problems using at least two examples, propose the smallest exact skill edits, and wait for approval before changing any skill. Do not commit.
-```
+Stage-by-stage prompt examples are in [EXAMPLES.md](EXAMPLES.md).
 
 ## Safety Rules
 
