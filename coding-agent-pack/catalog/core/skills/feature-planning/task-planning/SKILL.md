@@ -25,8 +25,8 @@ Read the repository's local instructions before planning. Check for `copilot-ins
 4. **Check history.** Use the latest relevant commits and, when useful, blame or earlier task notes to distinguish work that is already landed from work that is only proposed. Do not treat an old plan as current status.
 5. **Classify each work item.** Mark it as `landed`, `partially landed`, `planned`, or `blocked`. For `landed` items, cite the path and symbol that demonstrate the behavior and note whether tests cover it. Preserve landed work in the plan so the remaining scope is unambiguous.
 6. **Trace cross-project effects.** Check API contracts, authentication and authorization, persistence and migrations, startup or hydration, deployment configuration, frontend consumers, extension manifests, and compatibility with existing routes or resources when relevant.
-7. **Write the canonical plan.** Order phases by dependency. Each phase must identify the behavior, likely files and symbols, tests, and operational or documentation work needed to complete it. Do not create workflow or work-package files during this first pass.
-8. **Validate the canonical document.** Confirm that paths and symbols exist or are clearly labeled as new, Mermaid syntax is coherent, estimates cover discovery through verification, Related documents subsections exist even when empty, and no phase contradicts the current status.
+7. **Write the canonical plan.** Order phases by dependency. Each phase must identify the behavior, likely files and symbols, tests, and operational or documentation work needed to complete it. Do not create workflow or work-package files during this first pass. When WP-by-WP execution is requested, use the `plan-spec` Execution scope contract: prepare one defined WP, record its exact boundary/branch/base/checks and approval coverage, and retain all remaining phases. Preparing an open continuation does not move the bundle backward or create a separate plan.
+8. **Validate the canonical document.** Confirm that paths and symbols exist or are clearly labeled as new, Mermaid syntax is coherent, estimates cover discovery through verification, Related documents subsections exist even when empty, and no phase contradicts the current status. For a bounded WP, confirm that later unresolved decisions cannot change its implementation and shared blockers have not been hidden as deferred-WP gates.
 
 ## Required Plan Format
 
@@ -53,7 +53,7 @@ For every phase, specify:
 - **Verification:** focused unit, integration, API, browser, contract, or end-to-end tests, plus the relevant command when it is known;
 - **Documentation or operations:** updates to specs, environment variables, deployment, observability, or rollback procedures when needed.
 
-Supporting documents are not separate plans. They begin with the canonical issue tag. Work packages use `wp-<N>-<short-description>.md` and begin with a title followed directly by `## Goal`; do not add automatic Plan mapping, Route model, or Source references blocks.
+Supporting documents are not separate plans. They begin with the canonical issue tag. Work packages use `wp-<N>-<short-description>.md` and begin with a title followed directly by `## Goal`; do not add automatic Plan mapping, Route model, or Source references blocks. Their scope supports the canonical Execution scope and Dispatch Log; they do not own independent YAML status, approval, or lifecycle folders. Whole-plan completion criteria remain intact after any individual WP handoff or verification.
 
 ## Context-Specific Checks
 

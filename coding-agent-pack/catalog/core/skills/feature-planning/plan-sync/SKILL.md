@@ -12,21 +12,23 @@ Read the sibling `plan-spec/SKILL.md` first. Before selecting or inspecting plan
 ## Procedure
 
 1. Resolve and validate `PLAN_ROOT` before any lifecycle scan. If it is absent or invalid, ask the user for an absolute path and stop. Then select the requested canonical plan or every plan bundle in `$PLAN_ROOT/open/`. Do not treat supporting files as separate plans.
-2. Read the canonical plan's acceptance criteria, verification commands, dependencies, PRs, and promised release or deployment. Read related work packages and workflows as supporting scope.
-3. Check each review's state, latest commit, unresolved comments, required policies/checks, and merge result. Check the linked external work item and release evidence such as a release marker, release-system record, deployed version, or documented smoke test when the plan requires it.
-4. Compare changed files and reported results with every plan phase. Record omitted, added, or changed scope in `Outcome`; do not silently rewrite the original plan to match the PR.
+2. Read the canonical plan's acceptance criteria, verification commands, dependencies, PRs, promised release/deployment, and Execution scope when present. Read related work packages and workflows as supporting scope, not separate lifecycle owners.
+3. Check each review's state, latest commit, unresolved comments, required policies/checks, and merge result. For scoped work, associate every result with its WP, branch/base, and commit; do not use one WP's passing checks to verify another. Check the linked external work item and release evidence such as a release marker, release-system record, deployed version, or documented smoke test when the plan requires it.
+4. Compare changed files and reported results with every plan phase. Reconcile each dispatched WP's acceptance evidence and mark it `verified` only when its own required criteria/checks/reviews and WP-specific release promises pass under `plan-spec`. Otherwise retain its actual progress and named wait. Record omissions, changed scope, regressions that invalidate prior verification, and remaining WPs in `Outcome`; do not rewrite the original plan to match the PR, approve the next WP, or erase deferred scope.
 5. Apply one result:
-   - keep in `open` when implementation, review, CI, work-item closure, release, deployment, or external verification remains;
-   - move to `done` only when the `plan-spec` completion rule passes;
-   - move to `discarded` only after the Owner or Prompter confirms abandonment, with reason and replacement link.
-6. Update canonical `status`, `updated`, `Dispatch Log`, `Outcome`, `History`, and the README index in the same edit. Preserve the complete bundle.
+   - keep in `open` when any required WP is planned, ready, in-progress, in-review, blocked, or unverified, or when combined acceptance, work-item closure, release/deployment, or external evidence remains; a verified WP does not move the parent to `done`;
+   - move to `done` only after every required WP and the combined plan-level criteria satisfy the `plan-spec` completion rule, with any Owner-approved exception recorded explicitly;
+   - move to `discarded` only after the Owner or Prompter confirms abandonment of the plan, with reason and replacement link. Do not move individual WP files.
+6. Update canonical `status`, `updated`, Execution scope when present, `Dispatch Log`, `Outcome`, append-only `History`, and the single README index entry in the same edit. Preserve the complete bundle and prior evidence.
 7. Report inaccessible sources and ask one focused question only when the result depends on the Owner's acceptance. Do not commit.
 
 ## Next Command
 
 Finish with one `Next:` line:
 
-- Still in `open/`: `Next: /plan-sync <slug>` after the named evidence lands.
+- Still in `open/`, remaining WP needs preparation/approval: `Next: /plan-write <slug> wp-N` after its dependency gates pass.
+- Still in `open/`, a remaining WP is already approved and ready: `Next: /plan-dispatch <slug> wp-N` only when its dependency and isolation gates pass; do not launch it automatically.
+- Still in `open/`, acceptance or external evidence pending: name the wait and `Next: /plan-sync <slug>` after it lands.
 - Moved to `done/` or `discarded/`: `Next: /plan-retro` when a batch has finished.
 
 ## Commands

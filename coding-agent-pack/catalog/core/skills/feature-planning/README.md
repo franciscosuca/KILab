@@ -11,8 +11,8 @@ If no valid path is available, stop before searching, reading, or changing plan 
 The canonical policy is in `plan-spec/SKILL.md` and applies even when a stage is invoked through a prompt example below.
 
 - `drafts/`: captured requests and canonical plans that still need investigation or approval.
-- `next/`: approved, implementation-ready plan bundles waiting to be dispatched.
-- `open/`: dispatched or implemented plans waiting for review, CI, release, deployment, or another dependency.
+- `next/`: approved plan bundles with a whole-plan or explicitly bounded first-WP scope ready for dispatch.
+- `open/`: dispatched or implemented plans with remaining WPs or review, CI, release, deployment, or other dependencies.
 - `done/`: plans whose acceptance criteria and completion evidence are verified.
 - `discarded/`: plans intentionally stopped with a reason and, when available, a replacement link.
 
@@ -74,7 +74,10 @@ flowchart LR
     dispatch --> open["open/<plan-slug>/"]
     open --> status["/plan-status\nread-only"]
     open --> sync["/plan-sync"]
-    sync -->|"verified"| done["done/<plan-slug>/"]
+    open -->|"prepare another WP"| prepare["/plan-write <slug> wp-N\nbundle stays open"]
+    prepare -->|"WP approved + ready"| dispatch
+    sync -->|"WP verified; scope remains"| open
+    sync -->|"whole plan verified"| done["done/<plan-slug>/"]
     sync -->|"abandoned with confirmation"| discarded["discarded/<plan-slug>/"]
     done --> retro["/plan-retro"]
     discarded --> retro
@@ -85,13 +88,13 @@ flowchart LR
 
 ## Lifecycle States And Commands
 
-Each folder under `PLAN_ROOT` is one lifecycle state. Only the command in the last column moves a plan out of its current folder; the other commands read it.
+Each folder under `PLAN_ROOT` is one lifecycle state. Only the command in the last column moves a plan out of its current folder; WP preparation, dispatch, and synchronization may update an open plan in place without moving it.
 
 | Folder | Meaning | Reached by | Run next | Leaves through |
 |---|---|---|---|---|
 | `drafts/` | Request captured; investigation or approval pending | `/plan-add` | `/plan-write <slug>` | `/plan-write` after approval → `next/` |
-| `next/` | Approved and implementation-ready; waiting for dispatch | `/plan-write` (approval) | `/plan-dispatch <slug>` | `/plan-dispatch` → `open/` |
-| `open/` | Dispatched or implemented; waiting on review, CI, release, or deployment | `/plan-dispatch` | `/plan-status` to check; `/plan-sync <slug>` once evidence is ready | `/plan-sync` → `done/` when verified, or → `discarded/` when abandonment is confirmed |
+| `next/` | Whole plan or approved first WP ready for dispatch | `/plan-write` (approval) | `/plan-dispatch <slug>` for whole-plan mode; `/plan-dispatch <slug> wp-N` for a bounded WP | `/plan-dispatch` → `open/` |
+| `open/` | Work dispatched; remaining WPs or acceptance evidence pending | `/plan-dispatch` | `/plan-status` to check; `/plan-sync <slug>` to verify evidence; `/plan-write <slug> wp-N` then `/plan-dispatch <slug> wp-N` for a subsequent WP | `/plan-sync` → `done/` only when the whole plan is verified, or → `discarded/` when abandonment is confirmed |
 | `done/` | Acceptance criteria and completion evidence verified | `/plan-sync` | `/plan-retro` | Terminal |
 | `discarded/` | Intentionally stopped, with a reason and replacement when one exists | `/plan-sync` after confirmation | `/plan-retro` | Terminal |
 
@@ -100,6 +103,17 @@ Commands that do not change state:
 - `/plan-init` creates the root and lifecycle folders once. Run it before any other command.
 - `/plan-status` is read-only. Run it at any point to see which folder each plan is in and what it waits on.
 - `/plan-retro` reads `done/` and `discarded/` and proposes skill edits. It moves nothing.
+- `/plan-write <slug> wp-N` and `/plan-dispatch <slug> wp-N` can prepare/execute another WP in `open/`; neither moves an open bundle backward.
+
+## Work-Package-By-Work-Package Execution
+
+Keep one canonical plan and one lifecycle/index entry for the feature. Use a positional `wp-N` selector to prepare or dispatch exactly one WP already defined in the canonical Steps or linked supporting document. Do not create a separate `<ticket>-wp1` plan or move a supporting WP file between lifecycle folders.
+
+`plan-spec` defines the canonical `## Execution scope` table and WP progress states: `planned`, `ready`, `in-progress`, `in-review`, `verified`, and `blocked`. Record approval coverage, dependencies, the bounded implementation scope, branch/base, exact checks, and evidence there or in the canonical Verification/Dispatch Log. Later WPs stay visible but are not authorized by the current dispatch. Empty supporting folders are still valid for whole-plan execution; a WP selector does not implicitly create a file.
+
+The first approved slice moves the entire bundle `drafts → next → open`. Subsequent slices stay in `open`: prepare/approve the next WP, dispatch it explicitly, verify its evidence, and repeat. Dependencies require verified predecessor evidence unless explicitly approved as parallel-safe with isolated ownership. Do not automatically start another WP after a handoff, or widen a WP-mode plan to whole-plan dispatch when its selector is omitted.
+
+`/plan-sync` may verify a WP while keeping the parent open. A completed WP, or its merged PR alone, does not complete the feature; every required WP and the combined plan-level criteria must pass before `done`.
 
 ## Prompts By Stage
 
@@ -163,15 +177,33 @@ Create work packages for the approved canonical plan plan-XXXX-dynamic-body-vali
 ```text
 /plan-dispatch plan-XXXX-dynamic-body-validation
 
-Dispatch the canonical plan bundle from $PLAN_ROOT/next/ to an isolated coding agent. Preserve unrelated worktree changes, run the exact verification commands before and after repairs, record the branch, commits, review URL, checks, deviations, and blockers, and never merge the review.
+Dispatch the whole canonical plan bundle from $PLAN_ROOT/next/ to an isolated coding agent, only if no WP boundary is recorded. Preserve unrelated worktree changes, run the exact verification commands before and after repairs, record the branch, commits, review URL, checks, deviations, and blockers, and never merge the review.
 ```
+
+To prepare only the first defined WP:
+
+```text
+/plan-write plan-XXXX-dynamic-body-validation wp-1
+
+Prepare WP-1 as the first bounded slice in the canonical plan. Record the overall scope/architecture approval and WP-1 approval separately, retain all later WPs, and name exact files, branch/base, dependencies, acceptance criteria, and checks. Do not create supporting files or implement anything. Move the bundle to next only when the selected scope is approved and ready.
+```
+
+Then dispatch that scope explicitly:
+
+```text
+/plan-dispatch plan-XXXX-dynamic-body-validation wp-1
+
+Implement WP-1 only. Other WPs are context, not implementation authority. Stop after its checks and draft-review handoff. Do not start WP-2 or mark the parent plan done.
+```
+
+After `/plan-sync plan-XXXX-dynamic-body-validation` verifies WP-1, prepare and explicitly dispatch WP-2 using the same commands with `wp-2`. The existing canonical bundle stays in `open/`; resolve dependency and approval gates before proceeding. WP preparation does not authorize execution.
 
 ### 7. Report status
 
 ```text
 /plan-status
 
-Report all canonical plan bundles under $PLAN_ROOT. Validate folder status against canonical frontmatter first, then report readiness, dependencies, review state, CI or release evidence, and person, decision, system, or implementation blockers. Do not report supporting files as separate plans. This is read-only.
+Report all canonical plan bundles under $PLAN_ROOT. Validate folder status against canonical frontmatter first, then report execution mode, per-WP readiness/progress where recorded, dependencies, review state, CI or release evidence, and person, decision, system, or implementation blockers. Do not report supporting files as separate plans. This is read-only.
 ```
 
 ```text
@@ -185,7 +217,7 @@ Quick status for one plan: its folder, the commands already run from its History
 ```text
 /plan-sync plan-XXXX-dynamic-body-validation
 
-Compare the canonical plan and its work packages with the implementation, review, CI, external work item, release, and deployment evidence. Keep the complete bundle open if required evidence is pending. Move it to done only when the completion rule passes, or to discarded only after the Owner or Prompter confirms abandonment. Update the canonical outcome without merging or committing.
+Compare the canonical plan and its work packages with implementation, review, CI, external work item, release, and deployment evidence. Update per-WP verification in the canonical Execution scope when present. Keep the complete bundle open while any required WP or plan-level evidence remains; do not infer whole-plan completion from the last dispatched slice. Move it to done only when the completion rule passes, or to discarded only after the Owner or Prompter confirms abandonment. Update the canonical outcome without merging, committing, or automatically dispatching another WP.
 ```
 
 ### 9. Learn from completed work
@@ -206,4 +238,7 @@ Review recently done and discarded canonical plan bundles, work-package correcti
 - Do not treat context, workflow, or work-package files as separate lifecycle plans.
 - Do not create workflows before canonical-plan approval.
 - Do not create work packages without an explicit user request.
+- Require explicit WP selection and recorded scope approval for bounded dispatch; never widen it, auto-run prerequisites, or start the next WP automatically.
+- Keep shared blockers at plan level; do not hide them as deferred-WP gates.
+- Keep the complete bundle open until every required WP and the combined completion criteria are verified.
 - Do not merge reviews, transition external work items, trigger releases, or deploy merely to make a plan appear complete.
