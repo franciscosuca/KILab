@@ -1,26 +1,40 @@
 # Plan Skills Workflow
 
-The plan skills manage implementation work under `PLAN_ROOT`. The lifecycle folders are:
+Welcome! These feature-planning skills turn a request into a clear plan, hand approved work to a coding agent, and track it until it is done. Each plan is a Markdown bundle under your `PLAN_ROOT` that moves through lifecycle folders as work progresses.
 
-## Required PLAN_ROOT Gate (Every Stage)
+## Getting Started
 
-Before any planning-lifecycle stage—including init, add, write, dispatch, status, sync, retro, or creating supporting workflows/work packages—resolve a non-empty absolute `PLAN_ROOT` from the current request/conversation, explicit repository/workspace configuration, or an environment value visible to the agent. Do not rely on a value remembered from another conversation or another machine.
+1. Install the skills for your harness (`copilot`, `claude`, or `pi`):
 
-If no valid path is available, stop before searching, reading, or changing plan data and ask: `What absolute path should I use for PLAN_ROOT?` Wait for the user's answer. Never guess a folder, use the repository root as a fallback, or create a candidate location. If a configured path is invalid or inaccessible, ask for a correction rather than falling back. Only `/plan-init` may create the specified root, and only after the gate passes; every other stage requires the specified root to exist. If it or expected lifecycle folders are missing, stop and direct the user to `/plan-init` rather than initializing implicitly.
+   ```bash
+   scripts/install-pack.sh --harness copilot --scope project --skills feature-planning
+   ```
 
-The canonical policy is in `plan-spec/SKILL.md` and applies even when a stage is invoked through a prompt example below.
+2. Choose `PLAN_ROOT`, an absolute folder where plans will live. Export it or include it in your request:
 
-- `drafts/`: captured requests and canonical plans that still need investigation or approval.
-- `next/`: approved plan bundles with a whole-plan or explicitly bounded first-WP scope ready for dispatch.
-- `open/`: dispatched or implemented plans with remaining WPs or review, CI, release, deployment, or other dependencies.
-- `done/`: plans whose acceptance criteria and completion evidence are verified.
-- `discarded/`: plans intentionally stopped with a reason and, when available, a replacement link.
+   ```bash
+   export PLAN_ROOT=/Users/you/plans
+   ```
 
-`Blocked` is an index category, not a folder. A blocked plan stays in the lifecycle folder that matches its current status and records `blocked_by` in the canonical file.
+   Agents ask for this path rather than guessing it.
+
+3. Initialize the folder once:
+
+   ```text
+   /plan-init /Users/you/plans
+   ```
+
+   This creates `README.md` and the `drafts`, `next`, `open`, `done`, and `discarded` folders.
+
+4. Capture your first request:
+
+   ```text
+   /plan-add <your request>
+   ```
 
 ## Plan Bundle Structure
 
-Each plan is a bundle. The canonical file is the only lifecycle owner; supporting documents are not separate plans.
+Each plan is a bundle. The plan file is the only lifecycle owner; supporting documents are not separate plans.
 
 ```text
 <PLAN_ROOT>/<lifecycle>/<plan-slug>/
@@ -31,31 +45,9 @@ Each plan is a bundle. The canonical file is the only lifecycle owner; supportin
 └── work-packages/
 ```
 
-`workflows/` and `work-packages/` remain empty during the initial draft pass. The canonical file is created first and includes empty Related documents subsections for Context, Work packages, and Workflows.
+`workflows/` and `work-packages/` remain empty during the initial draft pass. The plan file is created first and includes empty Related documents subsections for Context, Work packages, and Workflows.
 
-The original request is preserved in `context/request.md`. Workflow documents are created only after the user approves the canonical plan. Work packages are created only after the user explicitly requests them.
-
-## Filename Rule
-
-Every new plan uses the same slug for its bundle directory and canonical file:
-
-```text
-<plan-slug>/<plan-slug>.md
-```
-
-For plans with an issue number:
-
-```text
-<PREFIX>-<NUMBER>-<NAME>/<PREFIX>-<NUMBER>-<NAME>.md
-```
-
-For plans without an issue number:
-
-```text
-<PREFIX>-XXXX-<inferred-name>/<PREFIX>-XXXX-<inferred-name>.md
-```
-
-`<PREFIX>` is the plan prefix configured for the plan root (`Plan prefix:` in `<PLAN_ROOT>/README.md`) or named in the request; when nothing defines one, use `plan`. For example, `Plan prefix: iiot` yields `iiot-1212-balbla/iiot-1212-balbla.md`. `<NAME>` is a lowercase, hyphen-separated slug inferred from the request, with no more than four words. Work packages use `wp-<N>-<short-description>.md`. Existing bundles keep their prefix; legacy files are indexed or archived but are not renamed automatically.
+The original request is preserved in `context/request.md`. Workflow documents are created only after the user approves the plan. Work packages are created only after the user explicitly requests them.
 
 ## Lifecycle States And Commands
 
@@ -108,22 +100,14 @@ Each folder under `PLAN_ROOT` is one lifecycle state. Only the command in the la
 | `done/` | Acceptance criteria and completion evidence verified | `/plan-sync` | `/plan-retro` | Terminal |
 | `discarded/` | Intentionally stopped, with a reason and replacement when one exists | `/plan-sync` after confirmation | `/plan-retro` | Terminal |
 
+`Blocked` is an index category, not a folder. A blocked plan stays in its folder and records `blocked_by` in the plan file.
+
 Commands that do not change state:
 
 - `/plan-init` creates the root and lifecycle folders once. Run it before any other command.
 - `/plan-status` is read-only. Run it at any point to see which folder each plan is in and what it waits on.
 - `/plan-retro` reads `done/` and `discarded/` and proposes skill edits. It moves nothing.
 - `/plan-write <slug> wp-N` and `/plan-dispatch <slug> wp-N` can prepare/execute another WP in `open/`; neither moves an open bundle backward.
-
-## Work-Package-By-Work-Package Execution
-
-Keep one canonical plan and one lifecycle/index entry for the feature. Use a positional `wp-N` selector to prepare or dispatch exactly one WP already defined in the canonical Steps or linked supporting document. Do not create a separate `<ticket>-wp1` plan or move a supporting WP file between lifecycle folders.
-
-`plan-spec` defines the canonical `## Execution scope` table and WP progress states: `planned`, `ready`, `in-progress`, `in-review`, `verified`, and `blocked`. Record approval coverage, dependencies, the bounded implementation scope, branch/base, exact checks, and evidence there or in the canonical Verification/Dispatch Log. Later WPs stay visible but are not authorized by the current dispatch. Empty supporting folders are still valid for whole-plan execution; a WP selector does not implicitly create a file.
-
-The first approved slice moves the entire bundle `drafts → next → open`. Subsequent slices stay in `open`: prepare/approve the next WP, dispatch it explicitly, verify its evidence, and repeat. Dependencies require verified predecessor evidence unless explicitly approved as parallel-safe with isolated ownership. Do not automatically start another WP after a handoff, or widen a WP-mode plan to whole-plan dispatch when its selector is omitted.
-
-`/plan-sync` may verify a WP while keeping the parent open. A completed WP, or its merged PR alone, does not complete the feature; every required WP and the combined plan-level criteria must pass before `done`.
 
 ## Examples
 
@@ -137,7 +121,7 @@ Stage-by-stage prompt examples are in [EXAMPLES.md](EXAMPLES.md).
 - Never store credentials, tokens, or secret-bearing conversation text in a plan.
 - Do not rename or rewrite legacy plans during initialization.
 - Do not treat context, workflow, or work-package files as separate lifecycle plans.
-- Do not create workflows before canonical-plan approval.
+- Do not create workflows before plan approval.
 - Do not create work packages without an explicit user request.
 - Require explicit WP selection and recorded scope approval for bounded dispatch; never widen it, auto-run prerequisites, or start the next WP automatically.
 - Keep shared blockers at plan level; do not hide them as deferred-WP gates.
