@@ -16,11 +16,15 @@ Read the sibling `plan-spec/SKILL.md` first and pass its `PLAN_ROOT` fail-closed
 3. If an external issue or documentation reference is present, read it through the available connector. Preserve its exact summary, identifiers, and relevant version information.
 4. Snapshot only the likely owning repositories: current branch, dirty files, remote, and recent relevant commits. Never overwrite or clean user changes.
 5. Search recent local agent sessions when they may explain prior decisions. Search external conversations only when an authorized connector is actually available; otherwise record that they were not checked.
-6. Create a plan bundle in `$PLAN_ROOT/drafts/<plan-slug>/` using the plan specification: `plan-<NUMBER>-<NAME>/plan-<NUMBER>-<NAME>.md` when an issue number is supplied; otherwise use `plan-XXXX-<inferred-name>/plan-XXXX-<inferred-name>.md`. Infer a lowercase hyphenated name from the request, limited to four words. Never guess a missing number. Create `context/`, `workflows/`, and `work-packages/` directories; the latter two remain empty.
+6. Create a plan bundle in `$PLAN_ROOT/drafts/<plan-slug>/` using the plan specification: `<PREFIX>-<NUMBER>-<NAME>/<PREFIX>-<NUMBER>-<NAME>.md` when an issue number is supplied; otherwise use `<PREFIX>-XXXX-<inferred-name>/<PREFIX>-XXXX-<inferred-name>.md`. Resolve `<PREFIX>` per the plan specification, defaulting to `plan` when nothing defines one. Infer a lowercase hyphenated name from the request, limited to four words. Never guess a missing number. Create `context/`, `workflows/`, and `work-packages/` directories; the latter two remain empty.
 7. Preserve the incoming request and supplied references in `context/request.md`. Create the canonical Markdown file with YAML frontmatter, the issue tag, `Status`, `Summary`, `Diagram`, `Steps`, `Verification`, `Estimations`, and `Related documents`. Include empty `Context`, `Work packages`, and `Workflows` subsections under Related documents. Do not create workflow or work-package files during `/plan-add`. Use the canonical structure from `plan-spec` rather than the minimum legacy draft sections.
-8. Add or refresh its single-line entry in `$PLAN_ROOT/README.md`. Do not commit.
+8. Add `## History` with one line (`plan-add: captured`) to the canonical file, then add or refresh its single-line entry in `$PLAN_ROOT/README.md`. Do not commit.
 
 Use the Prompter's own task language: problem first, then desired workflow or state, then constraints or alternatives. Keep screenshots and reproduction steps when supplied.
+
+## Next Command
+
+Finish with `Next: /plan-write <slug>` to investigate the draft. Do not start `/plan-write` automatically.
 
 ## Commands
 

@@ -4,3 +4,4 @@
 # Pi installs missing packages on its next start.
 pi-token-speed npm:pi-token-speed
 pi-context-usage npm:pi-context-usage
+pi-subagents npm:pi-subagents

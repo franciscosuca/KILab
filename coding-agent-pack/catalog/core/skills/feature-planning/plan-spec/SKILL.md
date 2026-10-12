@@ -2,6 +2,7 @@
 name: plan-spec
 description: "Shared contract for repository plan folders, plan Markdown, lifecycle states, evidence sources, dependencies, and completion checks. Every plan-* skill must read this first."
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Plan Specification
@@ -57,8 +58,8 @@ Each new plan is a bundle whose directory and canonical file share the same slug
 The lifecycle folder is the source of truth and must match canonical frontmatter `status`:
 
 - `drafts`: request captured and canonical plan under investigation or awaiting approval.
-- `next`: canonical plan approved and implementation-ready; supporting documents may still be empty.
-- `open`: dispatched or implemented; may be waiting on review, CI, release, or a ticket owner.
+- `next`: canonical plan approved and implementation-ready for the whole plan or its explicitly approved first work package; supporting documents may still be empty.
+- `open`: dispatched or implemented; may contain remaining planned work packages or be waiting on review, CI, release, or a ticket owner.
 - `done`: completion rules below are satisfied.
 - `discarded`: intentionally stopped, with a reason and replacement when one exists.
 
@@ -76,17 +77,18 @@ Standalone Markdown files directly under a lifecycle folder are legacy plans. In
 The canonical plan bundle and file use the same name:
 
 ```text
-plan-<NUMBER>-<NAME>/
-└── plan-<NUMBER>-<NAME>.md
+<PREFIX>-<NUMBER>-<NAME>/
+└── <PREFIX>-<NUMBER>-<NAME>.md
 ```
 
+- `<PREFIX>` is the plan prefix. Resolve it from the current request, then from the `Plan prefix: <word>` line in `$PLAN_ROOT/README.md`; when neither defines one, use `plan` exactly. A prefix is a single lowercase hyphenated word, for example `iiot` gives `iiot-1212-<NAME>/iiot-1212-<NAME>.md`.
 - `<NUMBER>` is the issue number supplied by the Owner or source request. Never invent a number.
-- When no number is supplied, use `XXXX` exactly: `plan-XXXX-<NAME>/plan-XXXX-<NAME>.md`.
+- When no number is supplied, use `XXXX` exactly: `<PREFIX>-XXXX-<NAME>/<PREFIX>-XXXX-<NAME>.md`.
 - `<NAME>` is a lowercase, hyphen-separated slug inferred from the request when necessary. Use no more than four words.
 - Preserve the source title, identifier, and terminology in the canonical contents and frontmatter even when the filename uses `XXXX`.
 - Work packages use `wp-<N>-<short-description>.md`, for example `wp-1-schema-registry.md`.
 - Supporting documents share the canonical issue tag, for example `#plan-2789`.
-- Existing legacy filenames and folders may be indexed, but must not be renamed automatically.
+- Existing bundles keep the prefix they were created with; changing the configured prefix applies to new plans only. Existing legacy filenames and folders may be indexed, but must not be renamed automatically.
 
 ## Plan Bundle And Canonical File
 
@@ -122,6 +124,7 @@ The canonical draft follows this structure:
 7. `## Verification` with exact commands, prerequisites, and expected results.
 8. `## Estimations` in developer-hours, excluding external wait time.
 9. `## Related documents` with `Context`, `Work packages`, and `Workflows` subsections.
+10. `## History`: append-only log with one line per command that changes the plan, formatted `- YYYY-MM-DD <command>: <result>`. `/plan-add` creates it; later commands append and never rewrite earlier lines.
 
 The Related documents subsections must exist in the initial canonical file but may be empty. Add links only when the corresponding supporting files are created.
 
@@ -130,6 +133,43 @@ The first planning input is preserved in `context/request.md` before the canonic
 Supporting documents do not require YAML frontmatter. They begin with the shared issue tag. A work package begins with its title and then `## Goal`; do not insert automatic Plan mapping, Route model, or Source references blocks between the title and Goal.
 
 Execution-only sections such as `Dependencies`, `Dispatch Log`, and `Outcome` may be added to the canonical file when the plan enters the corresponding lifecycle stage. They are not required in the initial draft template.
+
+## Work-Package Execution
+
+Whole-plan execution remains the default for plans without an active work-package boundary. An explicitly approved switch uses `Mode: whole-plan` and retains earlier WP/evidence records; omitting a selector is not such approval. To execute incrementally, use `/plan-write <slug> wp-N` to prepare one existing work package and `/plan-dispatch <slug> wp-N` to implement it. These are skill arguments, not new standalone plans or harness CLI flags. Resolve `wp-N` to exactly one definition in the canonical Steps or an existing linked `work-packages/wp-N-<description>.md`; stop and ask if it is missing, ambiguous, or contradicts the canonical scope. Never infer a new ticket or create a supporting file without the separate explicit request required above.
+
+The canonical plan remains the only lifecycle and progress owner. Add `## Execution scope` when work-package execution is requested, retain every remaining phase, and record the approved overall boundary, the next proposed slice, and one row per defined WP. For example:
+
+```markdown
+## Execution scope
+Mode: work-package
+Plan approval: <approver, date, and approved overall scope>
+Next dispatch: wp-1
+
+| WP | Scope / supporting document | Dependencies | State | Approval / evidence / blockers |
+| --- | --- | --- | --- | --- |
+| wp-1 | <bounded scope or existing relative link> | none | ready | <approver/date; checks in Verification> |
+| wp-2 | <remaining scope or existing relative link> | wp-1: verified | planned | Not approved for dispatch |
+```
+
+The table is ordinary Markdown, not additional YAML or independent lifecycle state. Keep repository/branch mappings and exact per-WP checks in the canonical plan; use `Dispatch Log` for each attempt's WP, timestamp, agent, branch/base, commits, review, command results, deviations, and blockers. Keep approval and verification evidence distinguishable. `Next dispatch` is a suggestion, not authorization to launch it.
+
+WP progress states:
+
+- `planned`: retained scope that is not yet approved and implementation-ready.
+- `ready`: the bounded scope is approved, dependencies are satisfied or explicitly parallel-safe, and files, branch/base, acceptance criteria, and checks are exact.
+- `in-progress`: the selected WP has been dispatched; do not start a duplicate writer.
+- `in-review`: implementation and local checks are recorded, but review, real CI, or other WP acceptance evidence remains.
+- `verified`: `/plan-sync` has confirmed that WP's acceptance criteria, required checks/reviews, and any WP-specific release/deployment promises pass. Overall ticket closure or a final combined release can remain a plan-level gate.
+- `blocked`: record the person, decision, system, or implementation blocker and the previous progress state so it can be resumed deliberately.
+
+Approval may cover the whole plan or a named slice, but its coverage must be recorded. For a scoped first dispatch, the overall scope/architecture must be approved and no unresolved decision may change the selected WP's implementation. Later WPs may remain planned or blocked only when their unanswered questions cannot affect the approved slice. Canonical `depends_on` and `blocked_by` apply to every dispatch; genuinely WP-specific dependencies/blockers belong in the WP row. Never move a shared blocker into a later WP merely to bypass readiness.
+
+A work-package-mode plan requires an explicit `wp-N` at dispatch. Omitting the selector must not widen the request to the whole plan; ask which WP to run. Switching back to whole-plan execution requires explicit user approval. Only the selected WP and its necessary, named shared changes are authorized; other WPs remain context. If an unplanned prerequisite is found, stop and ask rather than implementing it or automatically dispatching the next WP.
+
+On the first dispatch, move the complete bundle from `next` to `open` once. Subsequent WP preparation/dispatch stays in `open`; never move the bundle back to `drafts` or `next`, move individual WPs, or copy them into separate plans. Dependencies require `verified` predecessor evidence by default. Starting before verification requires explicit parallel-safe approval, named branch/base assumptions, and non-overlapping worktree/file ownership. Preserve previously verified results and recheck them when later changes invalidate their evidence.
+
+Commands that mutate a canonical plan update its `updated`, Execution scope when present, applicable Dispatch Log/Outcome, append-only History, and the single index entry. Include the WP selector in scoped History entries. `/plan-status` only reports these records. One verified WP never makes the parent plan `done`; the whole-plan completion rule still applies.
 
 ## Evidence Sources And Commands
 
@@ -162,4 +202,4 @@ Replace every placeholder with a runnable command in the plan. State prerequisit
 
 ## Completion Rule
 
-Move a plan to `done` only when all planned acceptance criteria pass, required tests and real CI succeed, required reviews are complete, documentation and configuration match the shipped behavior, and any promised release or deployment is observed. Keep a plan in `open` when its issue, release, deployment, reviewer action, or external dependency is still pending. The Owner decides whether an explicit exception is acceptable.
+Move a plan to `done` only when all planned acceptance criteria pass, required tests and real CI succeed, required reviews are complete, documentation and configuration match the shipped behavior, and any promised release or deployment is observed. For work-package execution, verify every required WP and the combined plan-level criteria; the latest WP's PR alone is not whole-plan evidence. Keep a plan in `open` while any required WP is planned, ready, in-progress, in-review, blocked, or unverified, or when its issue, release, deployment, reviewer action, or external dependency is still pending. The Owner decides whether an explicit exception is acceptable; record the exact exception without silently deleting deferred scope.

@@ -61,7 +61,7 @@ Project: .claude/
 Global:  ~/.claude/
 ```
 
-Core agents are rendered with Claude-compatible frontmatter. Core skills are exposed as Claude commands; nested skills such as feature-planning stages become individual commands.
+Core agents are rendered with Claude-compatible frontmatter. Core skills are exposed as Claude commands; nested skills such as feature-planning stages become individual commands. A skill directory's root `README.md`, such as the feature-planning workflow guide, is copied to `<scope>/skills/<skill>/README.md`.
 
 ### Pi
 
@@ -72,12 +72,12 @@ Project: .pi/
 Global:  ~/.pi/agent/   # or $PI_CODING_AGENT_DIR
 ```
 
-Pi does not consume Copilot `.agent.md` files directly. During installation, core agents are converted into Pi `SKILL.md` files. This conversion happens before Pi starts; it is not a runtime conversion.
+Pi does not consume Copilot `.agent.md` files directly. During installation, core agents are converted into Pi `SKILL.md` files. This conversion happens before Pi starts; it is not a runtime conversion. A skill directory's root `README.md`, such as the feature-planning workflow guide, is copied to `<scope>/skills/<skill>/README.md`.
 
 The installer never copies Pi authentication. Optional Pi add-ons and local model providers are chosen with `--extensions` and `--models`, or in the interactive questionnaire:
 
 - **Project model support:** `local-models.ts` is installed automatically for project-scoped Pi installs so Pi can load the project's `.pi/models.json`. It is not a selectable extension option. Global installs omit it because Pi reads its global `models.json` natively.
-- **Optional extensions/packages:** the `--extensions` selector controls optional bundled extensions and Pi packages. Packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed` and `pi-context-usage`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
+- **Optional extensions/packages:** the `--extensions` selector controls optional bundled extensions and Pi packages. Packages listed in `catalog/adapters/pi/packages.txt` (currently `pi-token-speed`, `pi-context-usage`, and `pi-subagents`) are opt-in: the installer adds their source to the `packages` list in `settings.json`, and Pi downloads and runs that third-party code on its next start.
 - **Models:** non-interactive `--models` commands use the static LM Studio/oMLX catalog in `catalog/adapters/pi/models.json`. The interactive questionnaire asks whether to use that template or scan live models from the selected local servers. After a scan you pick models per provider from a numbered list — `all`, `lmlink`, `local`, or comma-separated numbers — and, when the target already has models for those providers, whether to `extend` it (merge) or `clean` it (replace, which drops stale model IDs).
 
 Both merges only add what is missing. Existing providers, provider settings such as `baseUrl` and `apiKey`, models, packages, and other settings are kept, so re-running the installer is safe. Updating `settings.json` or `models.json` requires Python 3.7 or later.
@@ -164,7 +164,7 @@ When `--scope` is omitted, the script asks whether to install project-local or g
 
 ```bash
 ./scripts/install-pack.sh --harness pi --scope global --all --extensions all --models lmstudio,omlx
-./scripts/install-pack.sh --harness pi --scope project --skills none --extensions pi-token-speed,pi-context-usage
+./scripts/install-pack.sh --harness pi --scope project --skills none --extensions pi-token-speed,pi-context-usage,pi-subagents
 ```
 
 `--extensions` accepts `all`, `none`, or optional extension and package names from `--list`; it defaults to `none` in the current catalog. The project-only `local-models` adapter is installed automatically and is not a selectable option. `--models` accepts `all`, `none`, or provider names (`lmstudio`, `omlx`); it defaults to `none`. Both options require `--harness pi`. Unknown names stop the installation before any file is written. When models are selected, the script prints the model IDs and a reminder to download them manually.
@@ -185,7 +185,7 @@ Resource files are replaced, not merged. Every run overwrites the instruction fi
 | Harness | Replaced on every run | Replaced when selected |
 |---|---|---|
 | Copilot | `.github/copilot-instructions.md` | `.github/agents/*.agent.md`, files under `.github/skills/` |
-| Claude | `<scope>/CLAUDE.md`, `<scope>/commands/implementation-plan.md` | `<scope>/agents/*.md`, `<scope>/commands/*.md` |
+| Claude | `<scope>/CLAUDE.md`, `<scope>/commands/implementation-plan.md` | `<scope>/agents/*.md`, `<scope>/commands/*.md`, `<scope>/skills/*/README.md` |
 | Pi | `<scope>/APPEND_SYSTEM.md` | files under `<scope>/skills/`, `<scope>/extensions/*` |
 
 The instruction file is the pack's own guidance and currently holds one rule: writing `kyas` ("keep your answer short") in a prompt tells the harness to answer in about 30 words, expanding only when asked or when accuracy requires it. Pi applies it through `APPEND_SYSTEM.md`, which appends to Pi's built-in system prompt and never replaces your own `SYSTEM.md`.

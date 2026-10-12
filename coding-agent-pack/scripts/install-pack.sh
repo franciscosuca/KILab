@@ -786,7 +786,7 @@ print_overwrite_note() {
   local resources
   case "$HARNESS" in
     copilot) resources='selected agents and skills' ;;
-    claude) resources='selected agents and commands' ;;
+    claude) resources='selected agents, commands, and skill READMEs' ;;
     *) resources='selected agents, skills, and extensions' ;;
   esac
   printf 'WARNING: existing files at the destination are overwritten, not merged:\n'
@@ -1172,6 +1172,14 @@ render_claude_command() {
   log "$done_verb ${destination#$TARGET/}"
 }
 
+# Skill directories may carry a root README.md (feature-planning does); install it
+# beside the rendered skills so the workflow documentation ships with them.
+install_skill_readme() {
+  local skill_dir=$1 runtime=$2
+  [ -f "$skill_dir/README.md" ] || return 0
+  copy_file "$skill_dir/README.md" "$DEST/skills/$runtime/README.md"
+}
+
 install_copilot() {
   local file name runtime
   copy_file "$CATALOG/adapters/copilot/copilot-instructions.md" "$DEST/copilot-instructions.md"
@@ -1225,6 +1233,7 @@ install_claude() {
           render_claude_command "$child/SKILL.md" "$DEST/commands/$child_name.md"
         done
       fi
+      install_skill_readme "$file" "$runtime"
     done
   fi
 }
@@ -1311,6 +1320,7 @@ install_pi() {
           render_pi_skill "$child/SKILL.md" "$DEST/skills/$child_name/SKILL.md"
         done
       fi
+      install_skill_readme "$file" "$runtime"
     done
   fi
   install_pi_models
