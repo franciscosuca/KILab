@@ -19,7 +19,7 @@ Read the sibling `plan-spec/SKILL.md` first. Before selecting a plan or launchin
 
 ## Agent Contract
 
-Launch an isolated implementation agent with `runSubagent`. Pass the canonical plan path, complete bundle path, target repository, branch, exact checks, non-goals, dirty-file warning, and this instruction: implement the plan, use supporting context/workflows/work-packages as guidance, validate after each focused edit, record deviations, and never merge.
+Launch an isolated implementation agent with the available subagent tool (`subagent` from pi-subagents in Pi, or your harness's equivalent). Pass the canonical plan path, complete bundle path, target repository, branch, exact checks, non-goals, dirty-file warning, and this instruction: implement the plan, use supporting context/workflows/work-packages as guidance, validate after each focused edit, record deviations, and never merge.
 
 Use the branch already recorded in the plan. If none is recorded, follow the target repository pattern; the fallback is `<type>/<ticket-lower>-<slug>` or `<type>/<slug>`, where type is `feat`, `fix`, `docs`, `refactor`, `test`, `build`, or `ci`.
 
