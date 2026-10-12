@@ -174,6 +174,12 @@ Dispatch the canonical plan bundle from $PLAN_ROOT/next/ to an isolated coding a
 Report all canonical plan bundles under $PLAN_ROOT. Validate folder status against canonical frontmatter first, then report readiness, dependencies, review state, CI or release evidence, and person, decision, system, or implementation blockers. Do not report supporting files as separate plans. This is read-only.
 ```
 
+```text
+/plan-status iiot-2789
+
+Quick status for one plan: its folder, the commands already run from its History, flags, and one next command. Read local files only; add `full` to include review and CI state.
+```
+
 ### 8. Synchronize completed work
 
 ```text

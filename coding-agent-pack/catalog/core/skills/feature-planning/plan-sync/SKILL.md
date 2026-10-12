@@ -19,7 +19,7 @@ Read the sibling `plan-spec/SKILL.md` first. Before selecting or inspecting plan
    - keep in `open` when implementation, review, CI, work-item closure, release, deployment, or external verification remains;
    - move to `done` only when the `plan-spec` completion rule passes;
    - move to `discarded` only after the Owner or Prompter confirms abandonment, with reason and replacement link.
-6. Update canonical `status`, `updated`, `Dispatch Log`, `Outcome`, and the README index in the same edit. Preserve the complete bundle.
+6. Update canonical `status`, `updated`, `Dispatch Log`, `Outcome`, `History`, and the README index in the same edit. Preserve the complete bundle.
 7. Report inaccessible sources and ask one focused question only when the result depends on the Owner's acceptance. Do not commit.
 
 ## Next Command

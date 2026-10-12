@@ -124,6 +124,7 @@ The canonical draft follows this structure:
 7. `## Verification` with exact commands, prerequisites, and expected results.
 8. `## Estimations` in developer-hours, excluding external wait time.
 9. `## Related documents` with `Context`, `Work packages`, and `Workflows` subsections.
+10. `## History`: append-only log with one line per command that changes the plan, formatted `- YYYY-MM-DD <command>: <result>`. `/plan-add` creates it; later commands append and never rewrite earlier lines.
 
 The Related documents subsections must exist in the initial canonical file but may be empty. Add links only when the corresponding supporting files are created.
 

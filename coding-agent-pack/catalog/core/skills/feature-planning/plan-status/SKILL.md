@@ -1,13 +1,57 @@
 ---
 name: plan-status
 description: "Report plan status across drafts, next, open, done, and discarded, including readiness, review, CI, release, and person-versus-system blockers."
-argument-hint: "[area, ticket key, or lifecycle state]"
+argument-hint: "[plan slug or ticket key, optional full; omit for all plans]"
 user-invocable: true
 ---
 
 # Report Plan Status
 
 Read the sibling `plan-spec/SKILL.md` first. Before inventorying or reading lifecycle data, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute root is available, ask the user for it and stop; do not scan a guessed location. This skill is read-only: do not move plans, edit the index, transition tickets, approve PRs, or queue pipelines.
+
+## Quick Status
+
+Use this when the request names one plan, such as `/plan-status iiot-2789`. Report only that plan, from local files; do not call remote systems. Include review, CI, or external work-item state only when the request adds `full`, and then use the batch checks for that plan.
+
+Run this snippet with the plan name in `SLUG`:
+
+```bash
+SLUG='<plan-slug-or-ticket-key>'
+if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
+  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
+  exit 2
+fi
+MATCHES=$(find "$PLAN_ROOT" -mindepth 2 -maxdepth 2 -type d \( -name "$SLUG" -o -name "$SLUG-*" \) | sort)
+COUNT=$(printf '%s\n' "$MATCHES" | grep -c '/' || true)
+if [ "$COUNT" -eq 0 ]; then
+  printf 'No bundle matches %s; check the slug, or run /plan-status without a slug.\n' "$SLUG"
+  exit 3
+fi
+if [ "$COUNT" -gt 1 ]; then
+  printf '%s bundles match %s; list them and ask which one.\n%s\n' "$COUNT" "$SLUG" "$MATCHES"
+  exit 3
+fi
+BUNDLE=$MATCHES
+NAME=$(basename "$BUNDLE")
+CANON="$BUNDLE/$NAME.md"
+printf 'bundle: %s\nfolder: %s\n' "$BUNDLE" "$(basename "$(dirname "$BUNDLE")")"
+awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f' "$CANON" | grep -E '^(status|created|updated|blocked_by):'
+printf 'request: %s\n' "$(test -f "$BUNDLE/context/request.md" && echo yes || echo no)"
+printf 'work-packages: %s\nworkflows: %s\n' "$(find "$BUNDLE/work-packages" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')" "$(find "$BUNDLE/workflows" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
+echo 'history:'
+awk '/^## History/ {f=1; next} /^## / {f=0} f && /^- /' "$CANON"
+echo 'dispatch and outcome:'
+awk '/^## (Dispatch Log|Outcome)/ {f=1; print; next} /^## / {f=0} f' "$CANON" | head -20
+```
+
+Report four lines:
+
+1. `<bundle name> · <folder>/ · status <status> · updated <date>`.
+2. `Commands run:` the History lines as `date command: result`. Without a History section, write `not recorded; inferred from files:` and list what the files show: `context/request.md` means plan-add ran; `updated` later than `created` means plan-write or a later command ran; a Dispatch Log means plan-dispatch ran; an Outcome means plan-sync ran.
+3. `Flags:` anything that breaks lifecycle rules, such as workflows or work packages while the plan is in `drafts/` (approval not recorded), `blocked_by` entries, or a status that does not match its folder. Write `none` when there are none.
+4. `Next:` one command from `## Next Command`, using this plan's folder and blockers.
+
+If the snippet finds no match or several matches, show the matches and stop. Do not guess.
 
 ## Procedure
 

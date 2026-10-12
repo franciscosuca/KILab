@@ -15,7 +15,7 @@ Read the sibling `plan-spec/SKILL.md` first. Before selecting a plan or launchin
 2. Confirm `blocked_by` is empty, dependencies are done or explicitly parallel-safe, affected repositories and branches are named, and verification commands are exact.
 3. Inspect every target worktree. If unrelated changes exist, preserve them. If user changes overlap planned files, stop and ask how to isolate the work.
 4. Confirm access to each required external system. Record an unavailable issue tracker, source host, or CI connection instead of claiming it passed.
-5. Change canonical frontmatter to `open`, add the dispatch timestamp and agent to `Dispatch Log`, move the complete plan bundle to `$PLAN_ROOT/open/<plan-slug>/`, and update the index before launching work.
+5. Change canonical frontmatter to `open`, add the dispatch timestamp and agent to `Dispatch Log`, move the complete plan bundle to `$PLAN_ROOT/open/<plan-slug>/`, append a History line, and update the index before launching work.
 
 ## Agent Contract
 
