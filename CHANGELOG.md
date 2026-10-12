@@ -1,3 +1,17 @@
+## [2.8.0](https://github.com/franciscosuca/KILab/compare/v2.7.0...v2.8.0) (2026-10-12)
+
+### Features
+
+* **add pi-subagents package and install skill READMEs:** feat(pi): add pi-subagents package and install skill READMEs ([fc5bf35](https://github.com/franciscosuca/KILab/commit/fc5bf352621f05cbae254c0f19c7db9fd7ca0bb3))
+* **add quick status for one plan and a History log:** feat(plan): add quick status for one plan and a History log ([ae4032e](https://github.com/franciscosuca/KILab/commit/ae4032e828ac19aaff690530dd9c5d18affb43f4))
+* **add work-package-by-work-package execution:** feat(plan): add work-package-by-work-package execution ([6bf06e1](https://github.com/franciscosuca/KILab/commit/6bf06e17a3fa95682105b434f05ecd50c296cf2f))
+* **allow a configurable plan prefix:** feat(plan): allow a configurable plan prefix ([f852445](https://github.com/franciscosuca/KILab/commit/f852445193bf4e26a10d465ceb863cc0f285da0a))
+* **guide the next command in each plan skill:** feat(plan): guide the next command in each plan skill ([04ba05a](https://github.com/franciscosuca/KILab/commit/04ba05a9c0c872f45427e86fbd49ea63bd707816))
+
+### Bug Fixes
+
+* **use tool-agnostic subagent wording in plan-dispatch:** fix(pi): use tool-agnostic subagent wording in plan-dispatch ([0038e6a](https://github.com/franciscosuca/KILab/commit/0038e6a66b9947a6d8ef9bb176a20feb63cd6ac4))
+
 ## [2.7.0](https://github.com/franciscosuca/KILab/compare/v2.6.1...v2.7.0) (2026-10-08)
 
 ### Features
