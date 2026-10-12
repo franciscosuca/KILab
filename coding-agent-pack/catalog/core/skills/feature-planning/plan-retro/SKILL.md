@@ -11,7 +11,7 @@ Read the sibling `plan-spec/SKILL.md` first. Before searching completed plans, h
 
 ## Procedure
 
-1. Default to canonical plan bundles moved to `done` or `discarded` in the last 90 days. Include their canonical `Dispatch Log`, `Outcome`, related work packages, workflows, linked reviews, checks, external work items, and releases.
+1. Default to canonical plan bundles moved to `done` or `discarded` in the last 90 days. Include their canonical `Dispatch Log`, `Outcome`, related work packages and other explicitly linked supporting documents, reviews, checks, external work items, and releases.
 2. Query local agent sessions for corrections, retries, requests for exact commands, and cases where a proposal was not applied. Search external conversation only when an authorized connector exists.
 3. Inspect recent commits and PR follow-ups around the same topic. Distinguish a repeated workflow defect from one product-specific bug.
 4. Require at least two independent examples before proposing a durable rule. One severe data-loss, security, or credential event may justify a rule immediately.

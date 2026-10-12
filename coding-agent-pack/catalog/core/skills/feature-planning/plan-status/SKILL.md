@@ -37,7 +37,7 @@ CANON="$BUNDLE/$NAME.md"
 printf 'bundle: %s\nfolder: %s\n' "$BUNDLE" "$(basename "$(dirname "$BUNDLE")")"
 awk 'NR==1 && /^---$/ {f=1; next} f && /^---$/ {exit} f' "$CANON" | grep -E '^(status|created|updated|blocked_by):'
 printf 'request: %s\n' "$(test -f "$BUNDLE/context/request.md" && echo yes || echo no)"
-printf 'work-packages: %s\nworkflows: %s\n' "$(find "$BUNDLE/work-packages" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')" "$(find "$BUNDLE/workflows" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
+printf 'work-packages: %s\n' "$(find "$BUNDLE/work-packages" -type f -name '*.md' 2>/dev/null | wc -l | tr -d ' ')"
 echo 'history:'
 awk '/^## History/ {f=1; next} /^## / {f=0} f && /^- /' "$CANON"
 echo 'execution scope:'
@@ -57,7 +57,7 @@ If the snippet finds no match or several matches, show the matches and stop. Do 
 
 ## Procedure
 
-1. Inventory every lifecycle folder as plan bundles plus unclassified legacy plans. Report one canonical plan per bundle and do not report context, workflow, or work-package files as separate plans.
+1. Inventory every lifecycle folder as plan bundles plus unclassified legacy plans. Report one canonical plan per bundle and do not report context or work-package files as separate plans.
 2. Validate that each canonical file's frontmatter `status` matches its bundle's lifecycle folder. Report mismatches first.
 3. For drafts, identify the unanswered decision or missing evidence and whether the whole plan or first bounded WP can now be approved. Empty supporting folders are expected and are not blockers.
 4. For next plans, report execution mode, selected WP when scoped, approval/dependency readiness, excluded scope, and the exact next action. Never recommend an unscoped dispatch for a WP-mode plan.

@@ -45,13 +45,12 @@ Each plan is a bundle. The plan file is the only lifecycle owner; supporting doc
 ├── <plan-slug>.md
 ├── context/
 │   └── request.md
-├── workflows/
 └── work-packages/
 ```
 
-`workflows/` and `work-packages/` remain empty during the initial draft pass. The plan file is created first and includes empty Related documents subsections for Context, Work packages, and Workflows.
+New bundles do not create a separate `workflows/` directory or `Workflows` subsection. The plan file includes Related documents subsections for Context and Work packages. The original request is preserved in `context/request.md`, and the `work-packages/` directory starts empty. Keep implementation phases and process details in the canonical plan or its requested work packages rather than in separate workflow documents. Work packages are created only after the user explicitly requests them.
 
-The original request is preserved in `context/request.md`. Workflow documents are created only after the user approves the plan. Work packages are created only after the user explicitly requests them.
+Existing bundles may contain a legacy `workflows/` directory or `Workflows` subsection. Preserve those artifacts during ordinary commands; do not create, rewrite, or delete them unless the user explicitly requests it.
 
 ## Lifecycle States And Commands
 
@@ -124,8 +123,8 @@ Stage-by-stage prompt examples are in [EXAMPLES.md](EXAMPLES.md).
 - Never invent an issue number. Use `XXXX` when it is missing.
 - Never store credentials, tokens, or secret-bearing conversation text in a plan.
 - Do not rename or rewrite legacy plans during initialization.
-- Do not treat context, workflow, or work-package files as separate lifecycle plans.
-- Do not create workflows before plan approval.
+- Do not treat context or work-package files as separate lifecycle plans.
+- Do not create plan-bundle `workflows/` directories or separate workflow documents.
 - Do not create work packages without an explicit user request.
 - Require explicit WP selection and recorded scope approval for bounded dispatch; never widen it, auto-run prerequisites, or start the next WP automatically.
 - Keep shared blockers at plan level; do not hide them as deferred-WP gates.
