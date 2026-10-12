@@ -2,6 +2,7 @@
 name: plan-spec
 description: "Shared contract for repository plan folders, plan Markdown, lifecycle states, evidence sources, dependencies, and completion checks. Every plan-* skill must read this first."
 user-invocable: false
+disable-model-invocation: true
 ---
 
 # Plan Specification

@@ -22,6 +22,13 @@ Read the sibling `plan-spec/SKILL.md` first. Before selecting or inspecting plan
 6. Update canonical `status`, `updated`, `Dispatch Log`, `Outcome`, and the README index in the same edit. Preserve the complete bundle.
 7. Report inaccessible sources and ask one focused question only when the result depends on the Owner's acceptance. Do not commit.
 
+## Next Command
+
+Finish with one `Next:` line:
+
+- Still in `open/`: `Next: /plan-sync <slug>` after the named evidence lands.
+- Moved to `done/` or `discarded/`: `Next: /plan-retro` when a batch has finished.
+
 ## Commands
 
 Run these only after the `PLAN_ROOT` gate passes.

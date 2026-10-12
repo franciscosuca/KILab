@@ -25,6 +25,10 @@ Use the branch already recorded in the plan. If none is recorded, follow the tar
 
 Commits use the repository's required format; when none is documented, use `type(scope): outcome`. Apply sign-off or other repository policy when required. Review titles preserve the external identifier and source summary when available; otherwise use the commit form. The body contains `Problem`, `Changes`, `Verification`, and `Dependencies / rollout`, with exact command results.
 
+## Next Command
+
+Finish with `Next: /plan-status` to follow the draft review and checks. The bundle stays in `open/` until `/plan-sync <slug>` verifies completion.
+
 ## Commands
 
 Run these only after the `PLAN_ROOT` gate passes.

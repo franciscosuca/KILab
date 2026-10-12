@@ -24,6 +24,13 @@ Read the sibling `plan-spec/SKILL.md` first. Before inspecting drafts, request c
 
 Before moving a draft, verify that the bundle and canonical file both follow `<PREFIX>-<NUMBER>-<NAME>`; the canonical file is `<PREFIX>-<NUMBER>-<NAME>.md`. `<PREFIX>` is the configured plan prefix, defaulting to `plan`; accept existing bundles with other prefixes as they are. Use `<PREFIX>-XXXX-<inferred-name>` when no issue number was supplied, with at most four lowercase hyphen-separated name words. Do not silently rename an existing legacy draft or bundle; report the mismatch and ask the Prompter before changing it.
 
+## Next Command
+
+Finish with one `Next:` line:
+
+- Moved to `next/`: `Next: /plan-dispatch <slug>`.
+- Still in `drafts/`: name the open decision or the owner or system, then `Next: /plan-write <slug>` once it is answered.
+
 ## Commands
 
 Run these only after the `PLAN_ROOT` gate passes. Use the narrowest relevant forms:

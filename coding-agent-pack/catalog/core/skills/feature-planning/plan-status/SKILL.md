@@ -23,6 +23,23 @@ Read the sibling `plan-spec/SKILL.md` first. Before inventorying or reading life
    - `implementation`: agent work or failed verification still in progress.
 7. Mark a plan stale only when it has no recorded activity for 14 days and no explicit wait. State inaccessible sources as `unverified`, not failed or clear.
 
+## Next Command
+
+Give each plan one next command, using the first matching row:
+
+| Folder and state | Next command |
+|---|---|
+| `drafts/`, decision or evidence missing | Name the decision or evidence; then `/plan-write <slug>` |
+| `drafts/`, canonical plan ready | Owner approves; `/plan-write <slug>` moves it to `next/` |
+| `next/`, `blocked_by` not empty | Name the blocker and its owner; no command yet |
+| `next/`, `blocked_by` empty | `/plan-dispatch <slug>` |
+| `open/`, review, CI, or release evidence pending | Name the wait; `/plan-status` again when it lands |
+| `open/`, required evidence complete | `/plan-sync <slug>` |
+| `done/`, `discarded/` | `/plan-retro` when reviewing a batch |
+| Legacy, unclassified | Ask the Prompter before classifying; no command |
+
+End the report with one `Next:` line for the most urgent plan. These are suggestions; this skill never runs them.
+
 ## Commands
 
 Run these only after the `PLAN_ROOT` gate passes.
@@ -45,4 +62,4 @@ Use the configured source-host and CI integrations to read review and check stat
 
 ## Report Format
 
-Return these sections, omitting empty ones: `Needs attention`, `Ready to write`, `Ready to dispatch`, `In progress`, `Waiting on people`, `Waiting on decisions`, `Waiting on systems`, `Recently done`, and `Unclassified legacy`. Each plan gets one compact line with ticket/title, age, owner, PR, current evidence, and next action.
+Return these sections, omitting empty ones: `Needs attention`, `Ready to write`, `Ready to dispatch`, `In progress`, `Waiting on people`, `Waiting on decisions`, `Waiting on systems`, `Recently done`, and `Unclassified legacy`. Each plan gets one compact line with ticket/title, age, owner, PR, current evidence, and next command from `## Next Command`.

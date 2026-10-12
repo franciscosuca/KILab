@@ -1,6 +1,8 @@
 ---
 name: task-planning
 description: "Use when creating or updating implementation-ready plans across one or more repositories, services, or deployment environments."
+user-invocable: false
+disable-model-invocation: true
 ---
 
 # Task Planning

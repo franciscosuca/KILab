@@ -1,7 +1,7 @@
 ---
 name: plan-init
 description: "Initialize a repository's configured plan lifecycle. Use once to create the index and drafts, next, open, done, and discarded folders without moving legacy plans."
-argument-hint: "No arguments"
+argument-hint: "<absolute PLAN_ROOT, first run only>"
 user-invocable: true
 ---
 
@@ -35,6 +35,10 @@ Plan prefix: plan
 ```
 
 Each entry is one checkbox line with plan link, title, external identifier when present, owner, last update, and a short blocker or next action. Use `Owner` when no owner has been assigned. Do not copy full plan summaries into the index.
+
+## Next Command
+
+Finish with `Next: /plan-add <request>` to capture the first plan.
 
 ## Commands
 

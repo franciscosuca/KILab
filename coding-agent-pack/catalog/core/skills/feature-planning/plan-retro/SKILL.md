@@ -19,6 +19,10 @@ Read the sibling `plan-spec/SKILL.md` first. Before searching completed plans, h
 6. For each finding, name the evidence, why the current skill allowed it, the smallest exact edit, and the check that would prove the edit helps. Also identify obsolete or duplicate rules.
 7. Present the proposed diffs grouped by skill and wait for approval. After approval, edit only the accepted skills and run their structural checks. Never commit.
 
+## Next Command
+
+Finish with `Next:` naming what the Prompter must approve. Nothing is applied until approval.
+
 ## Commands
 
 Run these only after the `PLAN_ROOT` gate passes.

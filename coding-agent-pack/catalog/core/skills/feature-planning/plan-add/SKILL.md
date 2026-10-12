@@ -22,6 +22,10 @@ Read the sibling `plan-spec/SKILL.md` first and pass its `PLAN_ROOT` fail-closed
 
 Use the Prompter's own task language: problem first, then desired workflow or state, then constraints or alternatives. Keep screenshots and reproduction steps when supplied.
 
+## Next Command
+
+Finish with `Next: /plan-write <slug>` to investigate the draft. Do not start `/plan-write` automatically.
+
 ## Commands
 
 Run these only after the `PLAN_ROOT` gate passes.
