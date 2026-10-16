@@ -1,110 +1,167 @@
-# Plan Skills Examples
+# Feature-planning v2 Examples
 
-Stage-by-stage prompts for the plan skills. See [README.md](README.md) for the workflow and lifecycle.
+See [README.md](README.md) for the primary lifecycle. All paths/commands below are examples, not records of implementation or test execution. Supply an actual absolute `PLAN_ROOT`; never copy a placeholder as a real environment setting.
 
-## Prompts By Stage
-
-### 1. Initialize the lifecycle
+## 1. Create And Investigate
 
 ```text
-/plan-init
+/plan-create
 
-First resolve and validate an absolute PLAN_ROOT from the current request, explicit repository/workspace configuration, or an environment value visible to the agent. If none is available, ask the user for the path and stop without inspecting or creating anything. Once the gate passes, create or verify README.md and the drafts, next, open, done, and discarded folders. Preserve legacy content, do not rename legacy files, do not modify product code, and do not commit. Report every created or existing path.
+Request: validate configuration before saving.
+Constraints: preserve compatible error responses; no unrelated cleanup.
+No issue number was supplied. Use XXXX, not an invented number.
+Preserve this request in artifacts/request.md. Inspect owning code, tests,
+configuration and history. Write both views; do not implement or publish.
+Keep the plan in drafts until the current revision is approved and ready.
 ```
 
-### 2. Capture a request as a draft
-
-With an issue number:
+Expected recommendation while approval is missing:
 
 ```text
-/plan-add
-
-Capture this request as a plan bundle:
-- Issue number: 2851
-- Request: expose application instances through the extension routes
-- Constraints: preserve existing route behavior and add focused verification
-
-Create plan-2851-<inferred-name>/ under $PLAN_ROOT/drafts/, preserve the request in context/request.md, and create the canonical Markdown skeleton. Leave work-packages/ empty. Do not implement product code.
+Next: /plan-create plan-XXXX-config-validation — after Owner approval of scope revision 1 and resolution of readiness gaps.
 ```
 
-Without an issue number:
+To record approval after reviewing the actual implementation contract:
 
 ```text
-/plan-add
+/plan-create plan-XXXX-config-validation
 
-Capture this request as a plan bundle:
-- Request: validate dynamic request bodies before forwarding them
-- Constraints: preserve current error responses where compatible
-
-No issue number was provided. Use plan-XXXX-<inferred-name>/, infer a lowercase name of at most four words, and do not guess a number. Preserve the request in context/request.md, create the canonical Markdown skeleton, leave work-packages/ empty, and do not implement product code.
+Approve scope revision 1 exactly as written. Record this approval.
+Move the complete bundle to next only if all execution gates pass.
+Do not implement yet. Publication remains local-only.
 ```
 
-### 3. Investigate and write the canonical plan
+## 2. Execute Or Resume
 
 ```text
-/plan-write plan-XXXX-dynamic-body-validation
+/plan-execute plan-XXXX-config-validation
 
-First append this input and its references to the plan bundle's context/request.md. Read the bundle and its sources. Inspect the smallest controlling code path, neighboring tests, configuration, history, and affected repository boundaries. Write or update only the canonical Markdown file using Status, Summary, Diagram, Steps, Verification, Estimations, and Related documents with empty Context and Work packages subsections. Do not create work packages. Keep the bundle in drafts until the canonical plan is approved.
+Implement the approved inline steps only. Verify approval/dependencies,
+branch/base and safe worktree ownership first. Resume a paused checkpoint
+without replaying completed work or starting a duplicate writer.
+Run the exact checks, record actual results and keep acceptance unverified
+until synchronization. No commit/push/review without separate permission.
 ```
 
-### 4. Create work packages on request
+Expected handoff recommendation:
 
 ```text
-Create work packages for the approved canonical plan plan-XXXX-dynamic-body-validation. Split the approved phases into wp-1-<short-description>.md files under work-packages/, begin each with the issue tag, title, and ## Goal, link them from Related documents, and do not add automatic Plan mapping or Source reference blocks.
+Next: /plan-sync plan-XXXX-config-validation — reconcile implementation receipts and the required review/check evidence.
 ```
 
-### 5. Dispatch an approved plan
+## 3. Synchronize
 
 ```text
-/plan-dispatch plan-XXXX-dynamic-body-validation
+/plan-sync plan-XXXX-config-validation
 
-Dispatch the whole canonical plan bundle from $PLAN_ROOT/next/ to an isolated coding agent, only if no WP boundary is recorded. Preserve unrelated worktree changes, run the exact verification commands before and after repairs, record the branch, commits, review URL, checks, deviations, and blockers, and never merge the review.
+Compare every required acceptance criterion with implementation, tested
+and landed trees, review/check evidence, and any promised external gates.
+Refresh both views and commit-link each delivered statement when possible.
+Keep open if evidence is missing. Record Owner-reported tests and exact
+exceptions without inventing CI, tracker, role or deployment acceptance.
+Repair authorized live links/index if moving the complete bundle.
 ```
 
-To prepare only the first defined WP:
+Expected recommendation only after verified/explicitly excepted completion:
 
 ```text
-/plan-write plan-XXXX-dynamic-body-validation wp-1
-
-Prepare WP-1 as the first bounded slice in the canonical plan. Record the overall scope/architecture approval and WP-1 approval separately, retain all later WPs, and name exact files, branch/base, dependencies, acceptance criteria, and checks. Do not create supporting files or implement anything. Move the bundle to next only when the selected scope is approved and ready.
+Next: /plan-retro plan-XXXX-config-validation — review the completed outcome.
 ```
 
-Then dispatch that scope explicitly:
+## 4. Retrospect
 
 ```text
-/plan-dispatch plan-XXXX-dynamic-body-validation wp-1
+/plan-retro plan-XXXX-config-validation
 
-Implement WP-1 only. Other WPs are context, not implementation authority. Stop after its checks and draft-review handoff. Do not start WP-2 or mark the parent plan done.
+Review corrections, execution evidence, reviews and failures. Record concise
+plan findings. Propose the smallest evidence-backed skill edits and wait
+for explicit approval before applying them. Do not commit or redispatch.
 ```
 
-After `/plan-sync plan-XXXX-dynamic-body-validation` verifies WP-1, prepare and explicitly dispatch WP-2 using the same commands with `wp-2`. The existing canonical bundle stays in `open/`; resolve dependency and approval gates before proceeding. WP preparation does not authorize execution.
-
-### 6. Report status
+If changes are proposed:
 
 ```text
-/plan-status
-
-Report all canonical plan bundles under $PLAN_ROOT. Validate folder status against canonical frontmatter first, then report execution mode, per-WP readiness/progress where recorded, dependencies, review state, CI or release evidence, and person, decision, system, or implementation blockers. Do not report supporting files as separate plans. This is read-only.
+Next: /plan-retro plan-XXXX-config-validation — after explicit approval of the proposed edits.
 ```
+
+If the retro is complete with nothing remaining:
 
 ```text
-/plan-status iiot-2789
-
-Quick status for one plan: its folder, the commands already run from its History, flags, and one next command. Read local files only; add `full` to include review and CI state.
+Next: /plan-create <new-request> — only when another task exists; new-request is a placeholder.
 ```
 
-### 7. Synchronize completed work
+## Complete Illustrative Draft
 
-```text
-/plan-sync plan-XXXX-dynamic-body-validation
+This fictional intake demonstrates the file format, not implementation readiness. Dates are example values; code paths/commands must be investigated before approval. Nothing has been delivered, so no commit link is fabricated. Copy to `drafts/plan-XXXX-config-validation/plan.md` only in an explicitly selected sandbox; also preserve the actual request in `artifacts/request.md` and its unique root index entry.
 
-Compare the canonical plan and its work packages with implementation, review, CI, external work item, release, and deployment evidence. Update per-WP verification in the canonical Execution scope when present. Keep the complete bundle open while any required WP or plan-level evidence remains; do not infer whole-plan completion from the last dispatched slice. Move it to done only when the completion rule passes, or to discarded only after the Owner or Prompter confirms abandonment. Update the canonical outcome without merging, committing, or automatically dispatching another WP.
+```markdown
+---
+schema_version: 2
+id: null
+title: "Validate configuration before saving"
+status: "draft"
+owner: "Owner"
+created: "2026-01-01"
+updated: "2026-01-01"
+sources: []
+repositories: []
+branches: []
+pull_requests: []
+depends_on: []
+blocked_by: ["Owner: scope approval and controlling code/test discovery pending"]
+scope_revision: 1
+approved_revision: null
+approved_by: null
+approved_at: null
+---
+# Validate configuration before saving
+
+## tldr-version
+
+**Scope:** Reject invalid configuration before persistence; preserve compatible errors and valid saves.
+
+**Status:** Draft; owning code/tests, verification commands and scope approval remain unresolved.
+
+**Delivered:** None yet.
+
+**Next:** `/plan-create plan-XXXX-config-validation` — investigate the controlling path and request approval of revision 1.
+
+## agent-version
+
+### Resume
+- Completed: request captured; no implementation.
+- Remaining: controlling code/test discovery, exact checks, approval.
+- Active writer: none.
+- Next: /plan-create plan-XXXX-config-validation — investigate and obtain revision 1 approval.
+
+### Scope
+- Goal: reject invalid input before persistence without unrelated changes.
+- Non-goals: new storage, authentication redesign, adjacent cleanup.
+- Compatibility: characterize existing error and valid-save behavior first.
+- Approval evidence: none; do not set approved_revision yet.
+- Publication: local-only; no commit/push/review permission.
+- Request: [original input](artifacts/request.md).
+
+### Implementation
+1. Planned: inspect owning repository instructions, save/validation symbols
+   and nearest negative-path test. Record exact files, dependencies and checks.
+2. Planned: implement approved validation at the smallest controlling boundary.
+   Acceptance: invalid input has no persistence effect; valid saves remain compatible.
+3. Planned: add focused/regression tests and current documentation where needed.
+   Acceptance: exact named checks pass on the delivered tree.
+
+### Verification
+- Working directory and exact commands: unresolved; investigation required.
+- Required cases: invalid/malformed input, authorization order, no partial
+  writes, compatible errors and unchanged valid saves.
+- No tests, review, CI, release, device or deployment acceptance claimed.
+
+### History
+- 2026-01-01 /plan-create plan-XXXX-config-validation: illustrative intake; request preserved.
 ```
 
-### 8. Learn from completed work
+## Delivered Statements And Diagram
 
-```text
-/plan-retro
+Once actual delivery exists, replace `None yet.` with one bullet per statement. Each gets its own authoritative commit link, even when several statements share a commit. For example, use `[short SHA](actual source-host commit URL)` populated from real receipts; do not turn this illustrative placeholder into a delivery claim. For verified uncommitted work explicitly say `uncommitted`; genuinely unavailable commit evidence is `commit unavailable`.
 
-Review recently done and discarded canonical plan bundles, work-package corrections, implementation-agent changes, review feedback, CI failures, commits, and available session history. Identify repeated workflow problems using at least two examples, propose the smallest exact skill edits, and wait for approval before changing any skill. Do not commit.
-```
+An optional `**Diagram:**` field follows Next and contains one fenced Mermaid block supported by the current plan. Do not add separate Evidence/Limits/Steps fields to the TL;DR. Important closure limits fit Status; details belong in the agent view.

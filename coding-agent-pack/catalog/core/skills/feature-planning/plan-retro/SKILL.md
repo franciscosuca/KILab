@@ -1,46 +1,32 @@
 ---
 name: plan-retro
-description: "Review completed and discarded plans, review feedback, CI failures, commits, and agent corrections to propose evidence-based improvements to the plan skills."
-argument-hint: "[date range, area, or plan names]"
+description: "Review completed/discarded plans and observed corrections to propose small evidence-backed planning improvements; apply only explicitly approved edits, never redispatch completed work."
+argument-hint: "<plan names, date range, or area>"
 user-invocable: true
 ---
 
-# Retrospect On Plans
+# Learn From Completed Plans
 
-Read the sibling `plan-spec/SKILL.md` first. Before searching completed plans, history, or review evidence, pass its `PLAN_ROOT` fail-closed gate. If no valid absolute root is available, ask the user for it and stop without scanning a guessed location. The retro improves the workflow from observed repetition. It proposes skill edits; it does not apply or commit them until the Prompter approves.
+Read the [shared contract](../plan-spec/SKILL.md) first. Pass its absolute `PLAN_ROOT` gate before searching plan data/history. Missing root: ask and stop with a conditional `Next:` command. Retrospective findings do not reopen, execute, or move terminal plans.
 
 ## Procedure
 
-1. Default to canonical plan bundles moved to `done` or `discarded` in the last 90 days. Include their canonical `Dispatch Log`, `Outcome`, related work packages and other explicitly linked supporting documents, reviews, checks, external work items, and releases.
-2. Query local agent sessions for corrections, retries, requests for exact commands, and cases where a proposal was not applied. Search external conversation only when an authorized connector exists.
-3. Inspect recent commits and PR follow-ups around the same topic. Distinguish a repeated workflow defect from one product-specific bug.
-4. Require at least two independent examples before proposing a durable rule. One severe data-loss, security, or credential event may justify a rule immediately.
-5. Look especially for repeated patterns: wrong package manager or working directory, release-runner failure, missing credentials or configuration, untested pipeline or container entrypoint, stale external/local diagrams, excessive scope or wording, runtime mock data after real integration, and agents stopping at suggestions.
-6. For each finding, name the evidence, why the current skill allowed it, the smallest exact edit, and the check that would prove the edit helps. Also identify obsolete or duplicate rules.
-7. Present the proposed diffs grouped by skill and wait for approval. After approval, edit only the accepted skills and run their structural checks. Never commit.
+1. Resolve the requested selection; otherwise inspect plans completed/discarded in the last 90 days using recorded closure/history dates, not artifacts as independent plans. Read canonical contracts, Outcome/Execution receipts, linked evidence, relevant review/check/commit follow-ups and available authorized session history. Legacy sources may inform findings read-only; do not convert them implicitly.
+2. Mark unavailable external issue/docs/chat/host/CI/release/deployment/session sources explicitly. Compare actual evidence, corrections and retries; do not infer current remote state from historical notes.
+3. Require two independent examples before a durable general rule. A severe security/credential/data-loss incident can justify a rule immediately. Separate recurring workflow failures from product-specific bugs.
+4. Look for wrong working directory/package manager/lockfile, unsafe credential output, untested CI/container startup, stale docs/diagrams, missing identity/configuration, runtime mock data, overlong duplicated context, unclear approval/scope, replayed stages, missing commit links/next commands, broken lifecycle links and overstated local closure.
+5. For each finding, give evidence links, why the current instruction allowed it, the smallest exact proposed edit/removal, expected benefit and a cheap validation. Keep product follow-ups separate from planning-rule changes.
+6. For selected v2 terminal plans, record concise plan-specific findings under `### Retrospective` in the agent view; detailed evidence can live in artifacts, never a separate workflow/implementation plan. Preserve prior evidence/history and terminal status. Refresh current views/Next, updated date and index only where a finding is recorded; append History. Legacy plans remain unmodified.
+7. Present proposed skill diffs and **wait for explicit approval**. Do not auto-edit skills just because a retrospective was requested. On a later authorized invocation, apply only the accepted edits to the named source collection, run structural tests/behavioral checks appropriate to the change, and record actual results. Never commit/push/publish implicitly.
 
-## Next Command
+## Result And Next Command
 
-Finish with `Next:` naming what the Prompter must approve. Nothing is applied until approval.
+Return selection/date range, sources reached/unavailable, repeated pattern and examples, exact proposed edits, validation, and recorded plan findings. A no-findings result is valid; do not invent improvements or force a new task.
 
-## Commands
+Every result—including failed, blocked, unchanged, checkpoint and handoff—must end with one explicit `Next:` line:
 
-Run these only after the `PLAN_ROOT` gate passes.
+- Proposed edits await approval: `Next: /plan-retro <actual-selection> — after explicit approval of the proposed edits.`
+- Approved validation/follow-up remains: `Next: /plan-retro <actual-selection> — after <named gate>.`
+- Complete, no follow-up: `Next: /plan-create <new-request> — only when another task exists; new-request is a placeholder.`
 
-```bash
-if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
-  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
-  exit 2
-fi
-find "$PLAN_ROOT"/{done,discarded} -mindepth 2 -maxdepth 4 -type f -name '*.md' -mtime -90 -print | sort
-git -C <repo> log --all --since='90 days ago' --date=short --format='%ad %h %s%n%b'
-git -C <repo> log --all --since='90 days ago' --grep='fix\|revert\|follow-up\|pipeline\|deploy' -i --oneline
-grep -RniE 'failed|blocked|deviation|follow-up|retry|unverified' "$PLAN_ROOT"/{done,discarded} 2>/dev/null
-find . -path '*/feature-planning/*' -type f -name 'SKILL.md' -print | sort
-```
-
-Use the available local session-history tool with a bounded query, adding repository or topic filters when possible. Use the configured source-host, issue-tracker, CI, release, and deployment integrations to collect remote evidence. Record every unavailable source.
-
-## Output
-
-Return: date range and sources reached; repeated pattern; two or more examples; affected skill; proposed replacement text; expected benefit; and a cheap validation. State explicitly when an external tracker, source host, documentation system, chat connector, CI, release, or deployment source could not be reached.
+Align TL;DR/Resume Next with this recommendation on v2 plan mutations, without inventing an actual new request. Never auto-run it or redispatch completed work.
