@@ -1,3 +1,9 @@
+## [2.9.0](https://github.com/franciscosuca/KILab/compare/v2.8.0...v2.9.0) (2026-10-16)
+
+### Features
+
+* **add caveman package:** feat(pi): add caveman package ([43dd127](https://github.com/franciscosuca/KILab/commit/43dd1274acd04d4593c0b7a1f8a5733810d153ea))
+
 ## [2.8.0](https://github.com/franciscosuca/KILab/compare/v2.7.0...v2.8.0) (2026-10-12)
 
 ### Features
