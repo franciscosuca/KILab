@@ -19,6 +19,7 @@ Read this file before using any other `plan-*` skill in this feature-planning co
 - Recheck package manager, lockfile, working directory, release runner, credentials, container startup command, and runtime environment. These commonly cause follow-up fixes.
 - If documentation or a diagram mirrors an external source, compare both directions before calling it current. Do not replace editable diagrams with screenshots unless requested.
 - Separate waits on a person, a decision, and a system. Name the owner or service instead of writing only `blocked`.
+- For factual audit entries, copy IDs, refs, states, timestamps, and check results from the authoritative output for that event. Distinguish approval, observation, and mutation times; do not infer current repository state from an earlier snapshot or reconstruct one opaque ID from another. Mark unverifiable facts as unverified and append corrections when needed.
 
 ## PLAN_ROOT Resolution And Fail-Closed Gate
 
@@ -134,6 +135,14 @@ The first planning input is preserved in `context/request.md` before the canonic
 Supporting documents do not require YAML frontmatter. They begin with the shared issue tag. A work package begins with its title and then `## Goal`; do not insert automatic Plan mapping, Route model, or Source references blocks between the title and Goal.
 
 Execution-only sections such as `Dependencies`, `Dispatch Log`, and `Outcome` may be added to the canonical file when the plan enters the corresponding lifecycle stage. They are not required in the initial draft template.
+
+### Evidence Placement And Compactness
+
+- Keep `Status` and `Execution scope` as concise current snapshots.
+- When present, use `Dispatch Log` for per-attempt commands/results, IDs, review/check state, deviations, and blockers.
+- Use `Outcome` for final reconciliation, exceptions, residuals, and the completion decision; cite the relevant dispatch entry, PR, or commit instead of duplicating detailed receipts.
+- Keep each `History` line a concise mutation summary that points to detailed evidence rather than copying command output or full test results.
+- Updating several sections does not require repeating the same detailed evidence; preserve earlier append-only records.
 
 ## Work-Package Execution
 

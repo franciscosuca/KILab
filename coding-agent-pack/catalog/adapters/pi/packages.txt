@@ -5,3 +5,4 @@
 pi-token-speed npm:pi-token-speed
 pi-context-usage npm:pi-context-usage
 pi-subagents npm:pi-subagents
+pi-caveman npm:@casualjim/pi-caveman
