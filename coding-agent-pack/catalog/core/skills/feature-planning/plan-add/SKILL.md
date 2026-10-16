@@ -38,7 +38,7 @@ fi
 grep -RniE '<issue-key|distinctive-terms>' "$PLAN_ROOT" 2>/dev/null
 date +%F
 git -C <repo> status --short --branch
-git -C <repo> remote -v
+git -C <repo> remote  # names only; do not print raw remote URLs
 git -C <repo> log --all -n 10 --date=short --format='%ad %h %s'
 <issue-tracker-lookup-command>
 <documentation-lookup-command>

@@ -18,8 +18,9 @@ Read the sibling `plan-spec/SKILL.md` first. Before selecting or inspecting plan
 5. Apply one result:
    - keep in `open` when any required WP is planned, ready, in-progress, in-review, blocked, or unverified, or when combined acceptance, work-item closure, release/deployment, or external evidence remains; a verified WP does not move the parent to `done`;
    - move to `done` only after every required WP and the combined plan-level criteria satisfy the `plan-spec` completion rule, with any Owner-approved exception recorded explicitly;
+   - If Owner approval includes a test report without exact commands or scope, record it as Owner-reported, not as independently rerun/passed. For every unmet criterion, distinguish verified evidence, an explicit local-closure exception, and external acceptance still outstanding. A general “tested/approve done” must not imply Jira, role, live catalog, release, or deployment acceptance.
    - move to `discarded` only after the Owner or Prompter confirms abandonment of the plan, with reason and replacement link. Do not move individual WP files.
-6. Update canonical `status`, `updated`, Execution scope when present, `Dispatch Log`, `Outcome`, append-only `History`, and the single README index entry in the same edit. Preserve the complete bundle and prior evidence.
+6. Update canonical `status`, `updated`, Execution scope when present, `Dispatch Log`, `Outcome`, append-only `History`, and the single README index entry in the same edit. Before and after a lifecycle move, scan `$PLAN_ROOT` Markdown for incoming links to the bundle slug; retarget only live link destinations, preserve historical quoted paths, and validate that changed relative links resolve and none still point to the old lifecycle. Update `updated` and append a path-only `History` entry in any affected canonical plan. Preserve the complete bundle and prior evidence.
 7. Report inaccessible sources and ask one focused question only when the result depends on the Owner's acceptance. Do not commit.
 
 ## Next Command
