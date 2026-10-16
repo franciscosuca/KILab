@@ -49,7 +49,7 @@ if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PL
 fi
 git -C <repo> status --short --branch
 git -C <repo> branch --show-current
-git -C <repo> remote -v
+git -C <repo> remote  # names only; do not print raw remote URLs
 git -C <repo> switch -c <branch>
 git -C <repo> diff --check
 git -C <repo> diff --stat

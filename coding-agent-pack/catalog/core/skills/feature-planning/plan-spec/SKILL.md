@@ -112,7 +112,7 @@ blocked_by: []
 ---
 ```
 
-Use `null` for an unknown `id`, and arrays even for one value. Never store credentials, tokens, or copied chat secrets.
+Use `null` for an unknown `id`, and arrays even for one value. Never store or render credentials, tokens, or copied chat secrets. Treat command output as potentially secret-bearing: do not print raw `git remote -v`, credential-bearing URLs/configuration, or secret-bearing environment values. Prefer remote names and read-only ref queries; redact embedded userinfo and credential query parameters before displaying a URL when necessary.
 
 The canonical draft follows this structure:
 
