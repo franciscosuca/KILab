@@ -1,215 +1,127 @@
 ---
 name: plan-spec
-description: "Shared contract for repository plan folders, plan Markdown, lifecycle states, evidence sources, dependencies, and completion checks. Every plan-* skill must read this first."
+description: "Internal feature-planning v2 contract: explicit root, one two-view plan, approval revisions, evidence, lifecycle, and mandatory next-command recommendations. Read before every planning operation."
 user-invocable: false
 disable-model-invocation: true
 ---
 
-# Plan Specification
+# Feature-planning v2 Contract
 
-Read this file before using any other `plan-*` skill in this feature-planning collection. The plan file is the durable handoff between the Prompter, Owner, implementation agent, source control, CI, and any external systems named by the plan.
+The canonical `plan.md` is the durable implementation handoff. Its metadata and `agent-version` own the contract; `tldr-version` is a derived human view. Read this contract before every planning command. No runtime extension or delegation framework is required.
 
-## Working Rules Learned From History
+## Root Gate — Before Any Plan Data Access
 
-- Start with the user or system problem, then the desired workflow or result. Preserve screenshots, examples, current-versus-desired behavior, and explicit alternatives.
-- Inspect the real implementation, schema, tests, and remote source before changing a plan or documentation. A local note or external page is context, not proof that behavior shipped.
-- Keep wording short and technical. Preserve source terminology and external identifiers. Do not expand the scope to adjacent cleanup without naming it.
-- When the Prompter says proceed, apply the approved change and validate it. Do not stop after repeating a proposal.
-- Record every command that was run. A pipeline edit is not verified until its underlying build or test runs locally where possible and the real CI policy succeeds.
-- Recheck package manager, lockfile, working directory, release runner, credentials, container startup command, and runtime environment. These commonly cause follow-up fixes.
-- If documentation or a diagram mirrors an external source, compare both directions before calling it current. Do not replace editable diagrams with screenshots unless requested.
-- Separate waits on a person, a decision, and a system. Name the owner or service instead of writing only `blocked`.
-- For factual audit entries, copy IDs, refs, states, timestamps, and check results from the authoritative output for that event. Distinguish approval, observation, and mutation times; do not infer current repository state from an earlier snapshot or reconstruct one opaque ID from another. Mark unverifiable facts as unverified and append corrections when needed.
+Resolve `PLAN_ROOT` from the current request/conversation, explicit repository/workspace configuration, or a non-empty environment value visible in this session. Require an absolute path. Never infer it from the working directory, search for a vault, rely on another session's memory, or fall back to another root. If missing, ask `What absolute path should I use for PLAN_ROOT?` and stop before scanning, reading, or changing plan data. If inaccessible or invalid, ask for correction and stop. Recheck in every conversation and at every stage.
 
-## PLAN_ROOT Resolution And Fail-Closed Gate
+Only `plan-create` may initialize that explicitly selected root. Idempotently add missing lifecycle folders and missing index sections; preserve all existing content and unrelated entries. Other commands require the root, index, and lifecycle folders to exist; otherwise recommend `plan-create` to initialize them first. Do not initialize Git or commit bookkeeping implicitly.
 
-Before any planning-lifecycle operation, resolve `PLAN_ROOT` from an absolute path supplied in the current request or conversation, an explicit repository/workspace configuration, or a non-empty `PLAN_ROOT` value visible to the current agent. A path remembered only from another conversation or unavailable machine environment does not count. Do not embed a user-specific absolute path in a skill or plan.
-
-The value must be non-empty and absolute. Never infer it from the current directory, choose a repository-local default, search for a likely vault, or fall back to another folder. If no valid value is available, stop before searching, reading, or changing plan data and ask the user: `What absolute path should I use for PLAN_ROOT?` Wait for the answer; do not proceed with any lifecycle stage until it is supplied. If the supplied/configured path is inaccessible or invalid, stop and ask for a correction rather than trying another location.
-
-`/plan-init` may create the specified root and lifecycle folders only after this gate passes. Every other lifecycle skill requires the specified root to exist; if it does not, stop and direct the user to `/plan-init` rather than creating anything implicitly. If expected lifecycle folders are missing, report that and do not initialize them implicitly. Recheck this gate independently at every lifecycle stage and in every new conversation.
-
-## Layout And State
-
-Once the gate passes, the plan root contains lifecycle folders:
+## Bundle, Naming, And Lifecycle
 
 ```text
-<plan-root>/
-  README.md
-  drafts/
-  next/
-  open/
-  done/
-  discarded/
+<PLAN_ROOT>/
+├── README.md
+├── drafts/
+├── next/
+├── open/
+├── done/
+└── discarded/
+
+<lifecycle>/<plan-slug>/
+├── plan.md
+└── artifacts/
+    └── request.md
 ```
 
-Each new plan is a bundle whose directory and canonical file share the same slug:
+Only `plan.md` owns lifecycle/status. Artifacts are evidence, not plans. New bundles have only `plan.md` and `artifacts/` at their top level. Do not create separate audience files, work packages, work-package selectors/tables, workflow documents, or equivalent shadow plans inside artifacts. Use numbered inline implementation steps and checkpoints instead.
 
-```text
-<plan-root>/<lifecycle>/<plan-slug>/
-  <plan-slug>.md
-  context/
-    request.md
-  work-packages/
-```
+New slugs: `<prefix>-<number>-<name>`. Resolve prefix from the current request, then `Plan prefix: <word>` in the index, otherwise `plan`. Never invent an issue number: use `XXXX` when absent. Infer at most four lowercase hyphen-separated name words. Preserve exact external IDs/titles in metadata. Detect collisions; ask instead of overwriting or inventing a disambiguating issue. Existing slugs/prefixes remain unchanged.
 
-`context/` stores the original request and related context; `work-packages/` contains optional supporting definitions. They are supporting-document areas, not independent plans. The canonical Markdown file is the only lifecycle and status owner. Move the complete bundle between lifecycle folders; never move only the canonical file.
+Select exactly one canonical bundle by explicit slug or unambiguous issue/request match. Search all lifecycle folders for duplicates before creating. Never auto-select another queued plan, treat supporting files as plans, or interpret an extra execution selector as permission to widen scope.
 
-New plan bundles do not create a separate `workflows/` directory or `Workflows` section. Existing bundles may contain those legacy artifacts; preserve them and their links during ordinary commands. Do not create, rewrite, or delete them unless the user explicitly asks to migrate or clean them up.
+| Folder | `status` | Meaning / transition owner |
+| --- | --- | --- |
+| `drafts/` | `draft` | Investigation, material decisions, readiness, or approval missing; `plan-create` may approve/prepare it. |
+| `next/` | `next` | Current scope revision explicitly approved; implementation-ready. `plan-execute` starts work. |
+| `open/` | `open` | Execution started; implementation or acceptance outstanding. Resume/replan in place; never silently move backward. |
+| `done/` | `done` | Whole-plan completion verified or exact Owner exceptions accepted through `plan-sync`. |
+| `discarded/` | `discarded` | Explicit abandonment confirmed through `plan-sync`, with reason/replacement. |
 
-The lifecycle folder is the source of truth and must match canonical frontmatter `status`:
+The folder owns lifecycle; report metadata mismatches before doing work, never execute through one. Blocked is not a folder. Record current blocking person/decision/system/implementation and owner in `blocked_by`; distinguish execution blockers from later completion gates. Terminal plans are not reopened or redispatched implicitly.
 
-- `drafts`: request captured and canonical plan under investigation or awaiting approval.
-- `next`: canonical plan approved and implementation-ready for the whole plan or its explicitly approved first work package; supporting documents may still be empty.
-- `open`: dispatched or implemented; may contain remaining planned work packages or be waiting on review, CI, release, or a ticket owner.
-- `done`: completion rules below are satisfied.
-- `discarded`: intentionally stopped, with a reason and replacement when one exists.
+Legacy standalone files or bundles without `schema_version: 2` are read-only/indexable. Do not mutate, execute, or synchronize them as v2. Ask for explicit per-bundle migration authorization; the collection's `MIGRATION.md` describes conversion. No second legacy execution model lives here.
 
-Standalone Markdown files directly under a lifecycle folder are legacy plans. Index them, but do not move or rewrite them without an explicit classification.
+## Canonical File And Approval
 
-## People And Systems
+Start from the [template](templates/plan.md). Frontmatter uses one key per line with **JSON-compatible YAML values**: quoted strings, ISO date strings, integers, `null`, and inline arrays. This deliberate subset needs no YAML dependency and preserves exact values. Use `id: null` if unknown; arrays remain arrays even for one value.
 
-- `Owner` is the default plan owner and final reviewer. The Prompter supplies the request and answers decisions that evidence cannot resolve. An implementation agent may make changes, but never self-merge.
-- Record the actual issue assignee, code-reviewers, and service owner for each dependency. Do not turn one work item's assignee into a permanent team-wide default.
-- Use the issue tracker, documentation system, source host, CI, release tooling, and deployment systems available to the repository. Name only the systems relevant to the plan.
-- Plans may depend on containers, databases, identity providers, cloud services, local certificates, or manually supplied configuration. Name only the systems and prerequisites relevant to the plan, and never store their secrets.
+Required metadata: `schema_version: 2`, `id`, `title`, `status`, `owner`, `created`, `updated`, `sources`, `repositories`, `branches`, `pull_requests`, `depends_on`, `blocked_by`, `scope_revision`, `approved_revision`, `approved_by`, `approved_at`.
 
-## Naming
+- `scope_revision` starts at 1. Increment for changed implementation boundaries, decisions, required steps, acceptance criteria, or repository/base assumptions that affect the contract.
+- Approval is explicit, attributable, dated, tied to that exact revision, and preserved in `artifacts/request.md` plus an Approval evidence reference. Set `approved_revision`, `approved_by`, and `approved_at` only from that evidence. Generating a plan or receiving a bare command is not approval.
+- A revised open plan stays open, records the approval blocker, and stops execution until reapproved. Status/receipt/link-only updates do not increment the scope revision or invalidate unchanged approval.
+- Ready execution requires `approved_revision == scope_revision`, named approval evidence, satisfied/explicitly parallel-safe dependencies, and no execution blockers. Later external acceptance is not automatically an implementation blocker, but stays required for completion unless explicitly excepted.
+- `Owner` is the default owner/final reviewer, not proof of an external assignee. Record actual system owners/reviewers when known; never invent a reviewer or request an author's own formal review.
 
-The canonical plan bundle and file use the same name:
+After frontmatter/title, use exactly `## tldr-version` then `## agent-version`. Keep all detailed headings at level 3 or deeper inside the agent view.
 
-```text
-<PREFIX>-<NUMBER>-<NAME>/
-└── <PREFIX>-<NUMBER>-<NAME>.md
-```
+### tldr-version — Only These Fields, In Order
 
-- `<PREFIX>` is the plan prefix. Resolve it from the current request, then from the `Plan prefix: <word>` line in `$PLAN_ROOT/README.md`; when neither defines one, use `plan` exactly. A prefix is a single lowercase hyphenated word, for example `iiot` gives `iiot-1212-<NAME>/iiot-1212-<NAME>.md`.
-- `<NUMBER>` is the issue number supplied by the Owner or source request. Never invent a number.
-- When no number is supplied, use `XXXX` exactly: `<PREFIX>-XXXX-<NAME>/<PREFIX>-XXXX-<NAME>.md`.
-- `<NAME>` is a lowercase, hyphen-separated slug inferred from the request when necessary. Use no more than four words.
-- Preserve the source title, identifier, and terminology in the canonical contents and frontmatter even when the filename uses `XXXX`.
-- Work packages use `wp-<N>-<short-description>.md`, for example `wp-1-schema-registry.md`.
-- Supporting documents share the canonical issue tag, for example `#plan-2789`.
-- Existing bundles keep the prefix they were created with; changing the configured prefix applies to new plans only. Existing legacy filenames and folders may be indexed, but must not be renamed automatically.
+1. **Scope:** concise implementation boundary.
+2. **Status:** lifecycle/progress; essential blocker or completion qualification. Detailed evidence/limits stay in the agent view.
+3. **Delivered:** one bullet per delivered statement, with direct Markdown links to its supporting commits **in every bullet when available**. A PR link supplements, never replaces, a known commit link. Use exact repository/IDs from authoritative receipts; map multi-repository claims to their own commits. Never invent links or treat planned work as delivered. If no commit is available, explicitly write `commit unavailable` or, for verified uncommitted work, `uncommitted`. If nothing is delivered, write `None yet.`
+4. **Next:** a backtick-wrapped exact next primary command and resolved slug/request, followed by any prerequisite. Match the Resume command and response recommendation.
+5. **Diagram:** optional fenced `mermaid` block, only when possible/useful and supported by evidence. Omit the field rather than invent architecture.
 
-## Plan Bundle And Canonical File
+Use the template's bold field labels. No separate Summary, Evidence, Limits, Steps, Estimates, or other fields. Maximum **299 words**. Counting is deterministic: remove fenced Mermaid blocks including delimiters, replace inline Markdown links/images with their visible labels, then count remaining whitespace-separated tokens, including labels and non-diagram code. Formatting/list markers count conservatively as tokens. The [validator](scripts/validate_plan.py) implements this rule; a 300-token view fails.
 
-Only the canonical file starts with parseable YAML:
+### agent-version — Dense, Complete, Resumable
 
-```yaml
----
-id: null
-title: <short title>
-status: draft
-owner: Owner
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-sources: []
-repositories: []
-branches: []
-pull_requests: []
-depends_on: []
-blocked_by: []
----
-```
+Use short technical statements, exact references, tables/checklists, and no duplicated receipts or empty ceremonial headings. No arbitrary length cap or Caveman dependency. Preserve precision, compatibility, security, and negative cases.
 
-Use `null` for an unknown `id`, and arrays even for one value. Never store or render credentials, tokens, or copied chat secrets. Treat command output as potentially secret-bearing: do not print raw `git remote -v`, credential-bearing URLs/configuration, or secret-bearing environment values. Prefer remote names and read-only ref queries; redact embedded userinfo and credential query parameters before displaying a URL when necessary.
+Required headings:
 
-The canonical draft follows this structure:
+- `### Resume`: one current snapshot, completed/remaining work, active writer/run or none, checkpoint/blocker, essential evidence references, and `- Next: /plan-<command> <slug> — <gate>`. Never accumulate contradictory old “current” paragraphs.
+- `### Scope`: goal/non-goals/compatibility, relevant risks/decisions, approval evidence/coverage, and publication permissions. Reference metadata rather than copying it repeatedly.
+- `### Implementation`: dependency-ordered inline steps. Each names existing/new repository-relative files/symbols, expected behavior, negative cases, and acceptance. Keep landed work visible to avoid rebuilding it. Distinguish `landed`, `partially landed`, `planned`, and `blocked` from evidence, not old notes.
+- `### Verification`: exact commands, working directories, prerequisites, expected results and acceptance mapping. Mark investigation-only baselines separately from feature acceptance. Unknown commands are a draft/readiness gap, not permission to invent results.
+- `### History`: append-only `- YYYY-MM-DD /plan-command <slug>: result; evidence reference` per mutation. Do not reconstruct missing command history from filenames. Append factual corrections; never rewrite prior receipts.
 
-1. `#<issue-id>` tag.
-2. `# <ticket>: <title>`.
-3. `## Status`.
-4. `## Summary` with problem, desired result, scope, non-goals, and compatibility.
-5. `## Diagram` with one useful Mermaid diagram.
-6. `## Steps` with ordered phases, exact files or symbols, negative paths, and acceptance criteria.
-7. `## Verification` with exact commands, prerequisites, and expected results.
-8. `## Estimations` in developer-hours, excluding external wait time.
-9. `## Related documents` with `Context` and `Work packages` subsections.
-10. `## History`: append-only log with one line per command that changes the plan, formatted `- YYYY-MM-DD <command>: <result>`. `/plan-add` creates it; later commands append and never rewrite earlier lines.
+Add Decisions/Dependencies/Execution/Outcome/Retrospective only when relevant. Keep detailed sanitized logs/screenshots in artifacts and link them; scope, stop conditions, and acceptance remain in `plan.md`. Preserve requests and evidence append-only. Estimates, architecture diagrams, rollback/operations and cross-project effects are proportional to the actual task, not mandatory filler.
 
-The Related documents subsections must exist in the initial canonical file but may be empty. Add links only when the corresponding supporting files are created.
+## Evidence, Safety, And Completion
 
-The first planning input is preserved in `context/request.md` before the canonical summary is written. The initial `plan-write` pass must not create work-package documents. Work packages require a separate explicit user request.
+- Inspect owning code, schemas, neighboring tests, configuration, relevant history, and every affected repository boundary. Read local instructions. Source notes or an issue description alone do not prove behavior shipped.
+- Check only relevant package manager/lockfile, working directory, CI/release runner, credentials/identity prerequisites, container entrypoint, runtime mocks, and local/remote documentation drift. Copy runnable commands from repository guidance.
+- Record exact commands/tool calls and results, repository/base/tested commit, reviewer/CI state, deviations, and provenance. Copy opaque IDs and timestamps from authoritative output; distinguish approval, observation, and mutation times. Never reconstruct an ID or report an old snapshot as current.
+- Never store/display secrets, copied secret-bearing chat, credential-bearing URLs/configuration, or secret environment values. Do not print raw `git remote -v`; use remote names (`git remote`) and read-only ref queries. Redact credentials before rendering any URL/output.
+- Unavailable connectors/access are `unverified`, not passed/failed/clear. No interactive login during a read-only status query. Owner-reported testing without commands/scope stays Owner-reported, not independently rerun.
+- A launched/completed agent run, local pass, merged PR, or contributor/license check is not whole-plan acceptance or build/test CI. Associate every result with the actual tested tree; compare landed content before reusing prior results and rerun invalidated checks.
+- `done` requires every required implementation/acceptance criterion, required tests/real CI/reviews, current docs/config, and any promised issue/release/deployment evidence. Otherwise keep open. The Owner may explicitly accept a precisely scoped exception; preserve each unmet criterion, its exact waiver and residual external acceptance. No inherited exceptions or silent deletion of deferred scope.
+- Local closure does not claim tracker closure, role enablement, live catalogs/cloud/devices, deployment, or downstream completion. A general “tested/approve done” does not waive those gates implicitly; ask a focused acceptance question when needed.
+- Never self-merge, transition external work items, release, deploy, grant access, or clean/reset/force-push work merely to manufacture completion. Commit/push/draft-review only when the request or recorded publication permissions explicitly authorize them. Plan bookkeeping is not committed implicitly.
 
-Supporting documents do not require YAML frontmatter. They begin with the shared issue tag. A work package begins with its title and then `## Goal`; do not insert automatic Plan mapping, Route model, or Source references blocks between the title and Goal.
+## Mutations, Moves, Index, And Concurrency
 
-Execution-only sections such as `Dependencies`, `Dispatch Log`, and `Outcome` may be added to the canonical file when the plan enters the corresponding lifecycle stage. They are not required in the initial draft template.
+Reread current files before writing. Preserve unrelated edits and active writers; stop/rebase on concurrent changes rather than overwriting them. Scope/approval, both views, updated date, applicable receipts, append-only History and the selected index entry must agree after a mutation. Do not auto-run a suggested next command.
 
-### Evidence Placement And Compactness
+Initialize index sections: `Next`, `Open`, `Drafts`, `Blocked`, `Recently Done`, `Discarded`, `Unclassified Legacy Plans`, with `Plan prefix: plan` only for a new index lacking a configured prefix. One canonical link per plan, in its lifecycle section, containing title/ID, owner, update and concise blocker/next action. Blocked summaries do not duplicate canonical links. Preserve legacy entries and unrelated prose.
 
-- Keep `Status` and `Execution scope` as concise current snapshots.
-- When present, use `Dispatch Log` for per-attempt commands/results, IDs, review/check state, deviations, and blockers.
-- Use `Outcome` for final reconciliation, exceptions, residuals, and the completion decision; cite the relevant dispatch entry, PR, or commit instead of duplicating detailed receipts.
-- Keep each `History` line a concise mutation summary that points to detailed evidence rather than copying command output or full test results.
-- Updating several sections does not require repeating the same detailed evidence; preserve earlier append-only records.
+Before moving, check destination collisions, concurrent edits, and live incoming/outgoing Markdown/reference/wiki links under the configured root. Move the **complete bundle**; repair only live destinations and relative links, not historical quoted/code paths. Validate the selected bundle, its unique current index entry, and affected links after the move. For path-only repairs to other canonical plans, update their date and append path-only History without changing scope/approval. Legacy or otherwise unapproved edits require permission before the move; report the gate instead of silently rewriting them. Do not broadly normalize a vault.
 
-## Work-Package Execution
+The read-only validator checks structure, TL;DR size/fields, declared approval/readiness, bundle layout, index uniqueness and local link destinations. It does **not** prove consent, truthful delivery links, executed tests, CI success, Mermaid semantics, or safe agent behavior. Validate with `python3 <resolved-validator-path> --root "$PLAN_ROOT" --plan <slug>`; add `--ready` before execution. Resolve the validator relative to this contract's `scripts/` directory, not the working directory. Root-wide validation checks only v2 bundles; reports legacy content without rewriting it.
 
-Whole-plan execution remains the default for plans without an active work-package boundary. An explicitly approved switch uses `Mode: whole-plan` and retains earlier WP/evidence records; omitting a selector is not such approval. To execute incrementally, use `/plan-write <slug> wp-N` to prepare one existing work package and `/plan-dispatch <slug> wp-N` to implement it. These are skill arguments, not new standalone plans or harness CLI flags. Resolve `wp-N` to exactly one definition in the canonical Steps or an existing linked `work-packages/wp-N-<description>.md`; stop and ask if it is missing, ambiguous, or contradicts the canonical scope. Never infer a new ticket or create a supporting file without the separate explicit request required above.
+## Mandatory Next Command — Every Result
 
-The canonical plan remains the only lifecycle and progress owner. Add `## Execution scope` when work-package execution is requested, retain every remaining phase, and record the approved overall boundary, the next proposed slice, and one row per defined WP. For example:
+Every primary-command result and optional status result, including success, blocked, failed, unchanged, checkpoint and handoff, **must end with one explicit `Next:` line**. Use the exact command and actual resolved slug/request; include the gate, never just “continue”, an approval question, or a blocker. Missing root/target: ask for it, label necessary placeholders, and recommend a conditional rerun without guessing. This applies even when nothing was changed.
 
-```markdown
-## Execution scope
-Mode: work-package
-Plan approval: <approver, date, and approved overall scope>
-Next dispatch: wp-1
+| Actual state | Next primary command |
+| --- | --- |
+| Draft needs investigation/revision/approval; changed open scope needs reapproval | `/plan-create <slug>` after the named decision/approval; open stays open |
+| Approved, ready, no active writer | `/plan-execute <slug>` |
+| Open, paused approved implementation remains, no active writer | `/plan-execute <slug>` after resume checks |
+| Open, writer running or acceptance/check/review evidence pending | `/plan-sync <slug>` once the named evidence arrives; no duplicate execution |
+| Done/discarded | `/plan-retro <slug>` |
+| Retro edits proposed, not approved | `/plan-retro <selection>` after explicit approval |
+| Retro complete, nothing remains | `/plan-create <new-request>` only when another task exists; label placeholder |
 
-| WP | Scope / supporting document | Dependencies | State | Approval / evidence / blockers |
-| --- | --- | --- | --- | --- |
-| wp-1 | <bounded scope or existing relative link> | none | ready | <approver/date; checks in Verification> |
-| wp-2 | <remaining scope or existing relative link> | wp-1: verified | planned | Not approved for dispatch |
-```
-
-The table is ordinary Markdown, not additional YAML or independent lifecycle state. Keep repository/branch mappings and exact per-WP checks in the canonical plan; use `Dispatch Log` for each attempt's WP, timestamp, agent, branch/base, commits, review, command results, deviations, and blockers. Keep approval and verification evidence distinguishable. `Next dispatch` is a suggestion, not authorization to launch it.
-
-WP progress states:
-
-- `planned`: retained scope that is not yet approved and implementation-ready.
-- `ready`: the bounded scope is approved, dependencies are satisfied or explicitly parallel-safe, and files, branch/base, acceptance criteria, and checks are exact.
-- `in-progress`: the selected WP has been dispatched; do not start a duplicate writer.
-- `in-review`: implementation and local checks are recorded, but review, real CI, or other WP acceptance evidence remains.
-- `verified`: `/plan-sync` has confirmed that WP's acceptance criteria, required checks/reviews, and any WP-specific release/deployment promises pass. Overall ticket closure or a final combined release can remain a plan-level gate.
-- `blocked`: record the person, decision, system, or implementation blocker and the previous progress state so it can be resumed deliberately.
-
-Approval may cover the whole plan or a named slice, but its coverage must be recorded. For a scoped first dispatch, the overall scope/architecture must be approved and no unresolved decision may change the selected WP's implementation. Later WPs may remain planned or blocked only when their unanswered questions cannot affect the approved slice. Canonical `depends_on` and `blocked_by` apply to every dispatch; genuinely WP-specific dependencies/blockers belong in the WP row. Never move a shared blocker into a later WP merely to bypass readiness.
-
-A work-package-mode plan requires an explicit `wp-N` at dispatch. Omitting the selector must not widen the request to the whole plan; ask which WP to run. Switching back to whole-plan execution requires explicit user approval. Only the selected WP and its necessary, named shared changes are authorized; other WPs remain context. If an unplanned prerequisite is found, stop and ask rather than implementing it or automatically dispatching the next WP.
-
-On the first dispatch, move the complete bundle from `next` to `open` once. Subsequent WP preparation/dispatch stays in `open`; never move the bundle back to `drafts` or `next`, move individual WPs, or copy them into separate plans. Dependencies require `verified` predecessor evidence by default. Starting before verification requires explicit parallel-safe approval, named branch/base assumptions, and non-overlapping worktree/file ownership. Preserve previously verified results and recheck them when later changes invalidate their evidence.
-
-Commands that mutate a canonical plan update its `updated`, Execution scope when present, applicable Dispatch Log/Outcome, append-only History, and the single index entry. Include the WP selector in scoped History entries. `/plan-status` only reports these records. One verified WP never makes the parent plan `done`; the whole-plan completion rule still applies.
-
-## Evidence Sources And Commands
-
-Run these commands only after the `PLAN_ROOT` gate above passes. If the value is absent or invalid, ask the user and stop; do not use a shell error as a substitute for that prompt. Use only sources available in the current session. State what could not be reached.
-
-```bash
-if [ -z "${PLAN_ROOT:-}" ] || [ "${PLAN_ROOT#/}" = "$PLAN_ROOT" ] || [ ! -d "$PLAN_ROOT" ]; then
-  printf 'PLAN_ROOT must be a configured absolute existing directory; ask the user and stop.\n' >&2
-  exit 2
-fi
-find "$PLAN_ROOT" -maxdepth 3 -type f -name '*.md' -print | sort
-git -C <repo> status --short --branch
-git -C <repo> log --all -n 20 --date=short --format='%ad %h %s'
-git -C <repo> diff --check
-```
-
-Use the configured connectors for the issue tracker, documentation system, source host, CI, release, and deployment systems when they are available. Record the exact command or tool call and its result. If a connector is unavailable, record that gap instead of inferring remote state. Use a bounded local session-history query when prior agent context is relevant and the tool is available.
-
-Choose checks by affected repository and copy their exact forms from repository documentation:
-
-```bash
-<repository-test-command>
-<repository-lint-command>
-<repository-build-command>
-<repository-integration-command>
-<repository-smoke-command>
-```
-
-Replace every placeholder with a runnable command in the plan. State prerequisites such as container services, non-secret environment configuration, certificates, credentials, or external access. Use the lockfile and package manager already present in each repository.
-
-## Completion Rule
-
-Move a plan to `done` only when all planned acceptance criteria pass, required tests and real CI succeed, required reviews are complete, documentation and configuration match the shipped behavior, and any promised release or deployment is observed. For work-package execution, verify every required WP and the combined plan-level criteria; the latest WP's PR alone is not whole-plan evidence. Keep a plan in `open` while any required WP is planned, ready, in-progress, in-review, blocked, or unverified, or when its issue, release, deployment, reviewer action, or external dependency is still pending. The Owner decides whether an explicit exception is acceptable; record the exact exception without silently deleting deferred scope.
+On mutations align TL;DR Next, Resume Next and final recommendation. Read-only results do not rewrite the stored recommendation. A suggestion never grants authority, bypasses a gate, starts another plan, or redispatches terminal work.

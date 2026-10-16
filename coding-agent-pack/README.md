@@ -29,6 +29,12 @@ Only `catalog/core/` and the selected adapter are installed. Archived content is
 
 If a reusable core item is specific to one harness, suffix its name with `-copilot`, `-claude`, or `-pi`. Generic items must not contain a harness suffix.
 
+## Feature planning v2
+
+Install with `--skills feature-planning`. The [collection guide](catalog/core/skills/feature-planning/README.md) introduces four primary commands: `plan-create`, `plan-execute`, `plan-sync`, and `plan-retro`. Each bundle has one two-view `plan.md` and an `artifacts/` folder; its TL;DR contains only Scope, Status, commit-linked Delivered claims, Next, and an optional Diagram (<300 words excluding diagrams).
+
+The installer preserves existing extras and warns about stale v1 command/skill paths; it never deletes them or migrates plan data. Follow the [upgrade guide](catalog/core/skills/feature-planning/MIGRATION.md) for explicit, scoped cleanup and separately authorized plan conversion. No runtime extension is required.
+
 ## Supported harnesses
 
 | Feature | Copilot | Claude | Pi |
@@ -61,7 +67,7 @@ Project: .claude/
 Global:  ~/.claude/
 ```
 
-Core agents are rendered with Claude-compatible frontmatter. Core skills are exposed as Claude commands; nested skills such as feature-planning stages become individual commands. A skill directory's root `README.md`, such as the feature-planning workflow guide, is copied to `<scope>/skills/<skill>/README.md`.
+Core agents are rendered with Claude-compatible frontmatter. User-invocable core skills are exposed as Claude commands; nested feature-planning stages become individual commands. Internal helpers (`user-invocable: false`) are copied as native skills, preserving invocation controls, templates, and scripts instead of becoming visible commands. Collection Markdown guides are installed under `<scope>/skills/<collection>/`; feature-planning's contract/documentation links are adjusted for the rendered layout.
 
 ### Pi
 
@@ -72,7 +78,7 @@ Project: .pi/
 Global:  ~/.pi/agent/   # or $PI_CODING_AGENT_DIR
 ```
 
-Pi does not consume Copilot `.agent.md` files directly. During installation, core agents are converted into Pi `SKILL.md` files. This conversion happens before Pi starts; it is not a runtime conversion. A skill directory's root `README.md`, such as the feature-planning workflow guide, is copied to `<scope>/skills/<skill>/README.md`.
+Pi does not consume Copilot `.agent.md` files directly. During installation, core agents are converted into Pi `SKILL.md` files. This conversion happens before Pi starts; it is not a runtime conversion. Nested collection skills are exposed individually, preserving `disable-model-invocation` when declared and copying supporting templates/scripts. Feature-planning also installs lightweight `<scope>/prompts/plan-*.md` aliases so the documented `/plan-create`, `/plan-execute`, `/plan-sync`, `/plan-retro` (and optional status command) load their native skills; `/skill:plan-create` remains valid. No alias is generated for the internal contract. Collection Markdown guides ship under `<scope>/skills/<collection>/` with feature-planning links adjusted to the flattened layout. Reload Pi after installation; project resources require Pi's normal project trust.
 
 The installer never copies Pi authentication. Optional Pi add-ons and local model providers are chosen with `--extensions` and `--models`, or in the interactive questionnaire:
 
@@ -185,8 +191,8 @@ Resource files are replaced, not merged. Every run overwrites the instruction fi
 | Harness | Replaced on every run | Replaced when selected |
 |---|---|---|
 | Copilot | `.github/copilot-instructions.md` | `.github/agents/*.agent.md`, files under `.github/skills/` |
-| Claude | `<scope>/CLAUDE.md`, `<scope>/commands/implementation-plan.md` | `<scope>/agents/*.md`, `<scope>/commands/*.md`, `<scope>/skills/*/README.md` |
-| Pi | `<scope>/APPEND_SYSTEM.md` | files under `<scope>/skills/`, `<scope>/extensions/*` |
+| Claude | `<scope>/CLAUDE.md`, `<scope>/commands/implementation-plan.md` | `<scope>/agents/*.md`, `<scope>/commands/*.md`, selected internal skills/assets and collection guides under `<scope>/skills/` |
+| Pi | `<scope>/APPEND_SYSTEM.md` | files under `<scope>/skills/`, `<scope>/extensions/*`, selected feature-planning aliases under `<scope>/prompts/` |
 
 The instruction file is the pack's own guidance and currently holds one rule: writing `kyas` ("keep your answer short") in a prompt tells the harness to answer in about 30 words, expanding only when asked or when accuracy requires it. Pi applies it through `APPEND_SYSTEM.md`, which appends to Pi's built-in system prompt and never replaces your own `SYSTEM.md`.
 
@@ -234,4 +240,4 @@ Run the pack checks from the KILab repository:
 ./coding-agent-pack/scripts/validate-pack.sh
 ```
 
-Validation checks the catalog layout, frontmatter, executable scripts, Python helper syntax, the Pi model catalog, and that known project-specific paths remain outside `catalog/core/`.
+Validation checks the catalog layout, frontmatter, executable scripts, Python helper syntax, the Pi model catalog, feature-planning format/installer regression tests, and that known project-specific paths remain outside `catalog/core/`. The installed planning validator is read-only and standard-library-only; it checks declared format/readiness/index/links, not actual consent, truthful commit receipts, or test/CI execution. The collection's [behavioral acceptance checklist](catalog/core/skills/feature-planning/ACCEPTANCE.md) separates unrun agent scenarios from automated structural coverage.

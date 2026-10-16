@@ -28,6 +28,8 @@ check grep -Fq 'When I write "kyas"(short for - keep your answer short) in my pr
 check grep -Fq 'copy_file "$CATALOG/adapters/pi/APPEND_SYSTEM.md" "$DEST/APPEND_SYSTEM.md"' "$SCRIPT_DIR/install-pack.sh"
 check test -x "$SCRIPT_DIR/install-pack.sh"
 check bash -n "$SCRIPT_DIR/install-pack.sh"
+check test -x "$CATALOG/core/skills/feature-planning/plan-spec/scripts/validate_plan.py"
+check python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$CATALOG/core/skills/feature-planning/plan-spec/scripts/validate_plan.py"
 check test -x "$SCRIPT_DIR/sync-pi-models.py"
 check python3 -c 'import ast, pathlib, sys; ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))' "$SCRIPT_DIR/sync-pi-models.py"
 check env PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$PACK_ROOT/tests"

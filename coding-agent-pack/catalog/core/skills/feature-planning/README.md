@@ -1,132 +1,103 @@
-# Plan Skills Workflow
+# Feature-planning v2
 
-Welcome! These feature-planning skills turn a request into a clear plan, hand approved work to a coding agent, and track it until it is done. Each plan is a Markdown bundle under your `PLAN_ROOT` that moves through lifecycle folders as work progresses.
+Four commands turn a request into an approved implementation contract, execute it, reconcile evidence, and learn from the outcome. One `plan.md` has a human TL;DR and a complete, context-efficient agent view; `artifacts/` holds supporting evidence.
 
-## Getting Started
+## Quick Start
 
-1. Choose `PLAN_ROOT`, an absolute folder where plans will live. Export it or include it in your request:
+1. Supply an **absolute** planning root in your request or visible environment. The agent asks rather than guessing:
 
    ```bash
-   export PLAN_ROOT=path/to/plans
+   export PLAN_ROOT="/absolute/path/to/PLANNING"
    ```
 
-   Agents ask for this path rather than guessing it.
-
-2. Open your harness (`copilot`, `claude`, or `pi`) before running any `/plan-*` command.
-
-3. Initialize the folder once:
+2. Capture and investigate a request. First use initializes only the explicitly selected root:
 
    ```text
-   /plan-init path/to/plans
+   /plan-create Validate configuration before saving; preserve existing errors and add regression tests.
    ```
 
-   This creates `README.md` and the `drafts`, `next`, `open`, `done`, and `discarded` folders.
-
-4. Add your first plan with an ID and name:
+3. Review the generated plan. Explicitly approve its identified scope revision, recording that approval through the same command:
 
    ```text
-   /plan-add <plan-id> <plan-name>
+   /plan-create plan-XXXX-config-validation
+   Approve scope revision 1 as written. Record this approval; do not implement yet.
    ```
 
-5. Write your request for the plan:
+   Approval alone does not cure missing readiness/dependencies. The bundle moves from drafts to next only when both approval and readiness pass.
+
+4. Execute that approved plan:
 
    ```text
-   /plan-write <plan-id> <written_request>
+   /plan-execute plan-XXXX-config-validation
    ```
 
-From here on, the agent will tell you which command to use to continue the workflow. The diagram below shows the full workflow.
+5. Reconcile actual delivery and acceptance evidence; incomplete work stays open:
 
-## Plan Bundle Structure
+   ```text
+   /plan-sync plan-XXXX-config-validation
+   ```
 
-Each plan is a bundle. The plan file is the only lifecycle owner; supporting documents are not separate plans.
+6. Review the completed/discarded outcome and propose improvements:
 
-```text
-<PLAN_ROOT>/<lifecycle>/<plan-slug>/
-├── <plan-slug>.md
-├── context/
-│   └── request.md
-└── work-packages/
-```
+   ```text
+   /plan-retro plan-XXXX-config-validation
+   ```
 
-New bundles do not create a separate `workflows/` directory or `Workflows` subsection. The plan file includes Related documents subsections for Context and Work packages. The original request is preserved in `context/request.md`, and the `work-packages/` directory starts empty. Keep implementation phases and process details in the canonical plan or its requested work packages rather than in separate workflow documents. Work packages are created only after the user explicitly requests them.
+Every result ends with **`Next: /plan-<command> <actual-slug> — <gate if any>`**, including blocked/failed/unchanged results. Recommendations never auto-run work or bypass approval. If no target/new task exists, necessary placeholders are explicitly labeled.
 
-Existing bundles may contain a legacy `workflows/` directory or `Workflows` subsection. Preserve those artifacts during ordinary commands; do not create, rewrite, or delete them unless the user explicitly requests it.
-
-## Lifecycle States And Commands
+## Lifecycle
 
 ```mermaid
-flowchart LR
-    init["/plan-init"] --> draftsBox
-
-    subgraph draftsBox["drafts/"]
-        add["/plan-add"]
-        writeDraft["/plan-write slug"]
-        add --> writeDraft
-    end
-
-    subgraph nextBox["next/"]
-        dispatchWhole["/plan-dispatch slug"]
-    end
-
-    subgraph openBox["open/"]
-        direction TB
-        status["/plan-status"]
-        sync["/plan-sync slug"]
-        writeWP["/plan-write slug wp-N"]
-        dispatchWP["/plan-dispatch slug wp-N"]
-        status ~~~ sync ~~~ writeWP ~~~ dispatchWP
-        writeWP <--> dispatchWP
-    end
-
-    subgraph doneBox["done/"]
-        retroDone["/plan-retro"]
-    end
-
-    subgraph discardedBox["discarded/"]
-        retroDiscarded["/plan-retro"]
-    end
-
-    writeDraft -->|"approved"| nextBox
-    dispatchWhole -->|"dispatch"| sync
-    dispatchWhole --> writeDraft
-    sync -->|"whole plan verified"| doneBox
-    sync -->|"abandoned, confirmed"| discardedBox
+flowchart TD
+    C["/plan-create<br/>Capture + investigate + write"] --> D["drafts/"]
+    D -->|"Explicit revision approval + readiness<br/>recorded through plan-create"| N["next/"]
+    N --> E["/plan-execute"]
+    E --> O["open/"]
+    O --> S["/plan-sync"]
+    S -->|"Paused approved implementation remains<br/>no active writer"| E
+    S -->|"Required evidence pending"| O
+    S -->|"Whole-plan criteria verified<br/>or exact Owner exceptions"| Done["done/"]
+    S -->|"Abandonment confirmed"| X["discarded/"]
+    Done --> R["/plan-retro"]
+    X --> R
+    R -.->|"Approved lessons inform new work"| C
 ```
 
-Each folder under `PLAN_ROOT` is one lifecycle state. Only the command in the last column moves a plan out of its current folder; WP preparation, dispatch, and synchronization may update an open plan in place without moving it.
+`drafts/` maps to metadata `status: "draft"`; other folder/status names match. An open plan resumes or is revised in place, never silently moves backward. Done/discarded plans are not redispatched. Blocked is a named wait, not another folder.
 
-| Folder | Meaning | Reached by | Run next | Leaves through |
-|---|---|---|---|---|
-| `drafts/` | Request captured; investigation or approval pending | `/plan-add` | `/plan-write <slug>` | `/plan-write` after approval → `next/` |
-| `next/` | Whole plan or approved first WP ready for dispatch | `/plan-write` (approval) | `/plan-dispatch <slug>` for whole-plan mode; `/plan-dispatch <slug> wp-N` for a bounded WP | `/plan-dispatch` → `open/` |
-| `open/` | Work dispatched; remaining WPs or acceptance evidence pending | `/plan-dispatch` | `/plan-status` to check; `/plan-sync <slug>` to verify evidence; `/plan-write <slug> wp-N` then `/plan-dispatch <slug> wp-N` for a subsequent WP | `/plan-sync` → `done/` only when the whole plan is verified, or → `discarded/` when abandonment is confirmed |
-| `done/` | Acceptance criteria and completion evidence verified | `/plan-sync` | `/plan-retro` | Terminal |
-| `discarded/` | Intentionally stopped, with a reason and replacement when one exists | `/plan-sync` after confirmation | `/plan-retro` | Terminal |
+## Storage And Two Views
 
-`Blocked` is an index category, not a folder. A blocked plan stays in its folder and records `blocked_by` in the plan file.
+```text
+<PLAN_ROOT>/
+├── README.md
+├── drafts/
+├── next/
+├── open/
+├── done/
+│   └── plan-1234-example/
+│       ├── plan.md
+│       └── artifacts/
+│           ├── request.md
+│           └── verification.md      # optional sanitized evidence
+└── discarded/
+```
 
-Commands that do not change state:
+- **`tldr-version`:** only Scope, Status, Delivered, Next and optional Diagram, in that order. Maximum 299 words excluding diagrams. Every delivered statement links its supporting commits when available; otherwise say `commit unavailable`/`uncommitted`. No delivery yet: `None yet.`
+- **`agent-version`:** one current resume/checkpoint, approved scope revision, exact implementation steps/files/symbols, verification/negative cases, relevant decisions/dependencies, evidence/outcome and append-only history. No length cap, duplicated receipts or extension requirement.
+- **`artifacts/`:** original sanitized requests/approvals plus useful evidence. Not independent plans or shadow task/workflow documents. No work-package/workflow folders or separate audience files.
 
-- `/plan-init` creates the root and lifecycle folders once. Run it before any other command.
-- `/plan-status` is read-only. Run it at any point to see which folder each plan is in and what it waits on.
-- `/plan-retro` reads `done/` and `discarded/` and proposes skill edits. It moves nothing.
-- `/plan-write <slug> wp-N` and `/plan-dispatch <slug> wp-N` can prepare/execute another WP in `open/`; neither moves an open bundle backward.
+Update both views after mutations; read-only inspection changes neither. Full-scope approval and acceptance are separate. Owner-reported tests, absent CI, local closure and external operational/tracker/deployment acceptance remain distinguishable; a merge or green local check alone is not done.
 
-## Examples
+## Examples, Upgrades, And Validation
 
-Stage-by-stage prompt examples are in [EXAMPLES.md](EXAMPLES.md).
+- [Examples](EXAMPLES.md): four-stage prompts and a complete illustrative draft.
+- [Migration](MIGRATION.md): retired commands, explicit legacy conversion, stale-install warnings.
+- [Behavioral acceptance checklist](ACCEPTANCE.md): safety scenarios that structural tests cannot prove.
 
-## Safety Rules
+## Advanced Reference
 
-- The Owner is the default plan owner and final reviewer; the Prompter supplies decisions that evidence cannot resolve.
-- At every lifecycle stage, require a valid absolute `PLAN_ROOT`; if it is missing, ask the user and stop without touching plan data. Never infer a fallback path.
-- Never invent an issue number. Use `XXXX` when it is missing.
-- Never store credentials, tokens, or secret-bearing conversation text in a plan.
-- Do not rename or rewrite legacy plans during initialization.
-- Do not treat context or work-package files as separate lifecycle plans.
-- Do not create plan-bundle `workflows/` directories or separate workflow documents.
-- Do not create work packages without an explicit user request.
-- Require explicit WP selection and recorded scope approval for bounded dispatch; never widen it, auto-run prerequisites, or start the next WP automatically.
-- Keep shared blockers at plan level; do not hide them as deferred-WP gates.
-- Keep the complete bundle open until every required WP and the combined completion criteria are verified.
-- Do not merge reviews, transition external work items, trigger releases, or deploy merely to make a plan appear complete.
+The internal [shared contract](plan-spec/SKILL.md) is read by each stage; it is not a user workflow step. The optional [read-only status skill](plan-status/SKILL.md) inspects local recorded status (`full` requests available read-only remote evidence) and always recommends a next primary command. It never repairs data or starts work.
+
+Pi installations include prompt aliases for the documented `/plan-*` spellings; the native `/skill:plan-create` form also works. Reload after installation and grant normal project trust before using project resources. Aliases only load the skill and pass arguments, adding no implementation authority or runtime extension.
+
+The [plan template](plan-spec/templates/plan.md) and standard-library [validator](plan-spec/scripts/validate_plan.py) ship beside the contract. Resolve their paths from this document, not the working directory. The validator checks format, declared readiness, index and local links; it does not prove consent, truthful receipts, remote commit existence, real tests/CI, or agent behavior.

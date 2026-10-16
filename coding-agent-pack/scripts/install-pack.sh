@@ -1136,7 +1136,7 @@ render_claude_agent() {
 }
 
 render_pi_skill() {
-  local source=$1 destination=$2 name description done_verb
+  local source=$1 destination=$2 name description invocation_line done_verb
   name=$(basename "$(dirname -- "$destination")")
   name=$(printf '%s' "$name" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-//; s/-$//')
   [ -n "$name" ] || die "could not derive a valid Pi skill name for $destination"
@@ -1144,6 +1144,7 @@ render_pi_skill() {
   description=$(frontmatter_value "$source" description || true)
   description=${description//\\/\\\\}
   description=${description//\"/\\\"}
+  invocation_line=$(frontmatter_line "$source" disable-model-invocation || true)
   if [ "$DRY_RUN" -eq 1 ]; then
     log "$(write_label "$destination" RENDER REPLACE) $source -> $destination"
     return
@@ -1154,8 +1155,32 @@ render_pi_skill() {
     printf '%s\n' '---'
     printf 'name: %s\n' "$name"
     printf 'description: "%s"\n' "$description"
+    [ -z "$invocation_line" ] || printf '%s\n' "$invocation_line"
     printf '%s\n' '---'
     strip_frontmatter "$source"
+  } > "$destination"
+  log "$done_verb ${destination#$TARGET/}"
+}
+
+# Pi natively uses /skill:name. A prompt alias exposes the documented /plan-*
+# spelling without duplicating instructions or requiring a runtime extension.
+render_pi_plan_alias() {
+  local source=$1 name=$2 destination="$DEST/prompts/$2.md" done_verb
+  if [ "$(frontmatter_value "$source" user-invocable)" = false ]; then return 0; fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    log "$(write_label "$destination" RENDER REPLACE) $source -> $destination"
+    return 0
+  fi
+  done_verb=$(write_label "$destination" rendered replaced)
+  mkdir -p "$(dirname -- "$destination")"
+  {
+    printf '%s\n' '---'
+    frontmatter_line "$source" description
+    frontmatter_line "$source" argument-hint
+    printf '%s\n' '---'
+    printf 'Read and follow the skill at `%s/skills/%s/SKILL.md` before acting.\n' "$DEST" "$name"
+    printf 'Resolve its relative links from that skill directory. This alias grants no additional authority.\n\n'
+    printf 'User request / arguments: $ARGUMENTS\n'
   } > "$destination"
   log "$done_verb ${destination#$TARGET/}"
 }
@@ -1168,16 +1193,68 @@ render_claude_command() {
   fi
   done_verb=$(write_label "$destination" rendered replaced)
   mkdir -p "$(dirname -- "$destination")"
-  strip_frontmatter "$source" > "$destination"
+  # Claude commands live beside skills, not inside a child skill directory.
+  case "$source" in
+    "$CORE_SKILLS/feature-planning/"*)
+      strip_frontmatter "$source" | sed 's|](../plan-spec/|](../skills/plan-spec/|g' > "$destination"
+      ;;
+    *) strip_frontmatter "$source" > "$destination" ;;
+  esac
   log "$done_verb ${destination#$TARGET/}"
 }
 
-# Skill directories may carry a root README.md (feature-planning does); install it
-# beside the rendered skills so the workflow documentation ships with them.
-install_skill_readme() {
-  local skill_dir=$1 runtime=$2
-  [ -f "$skill_dir/README.md" ] || return 0
-  copy_file "$skill_dir/README.md" "$DEST/skills/$runtime/README.md"
+# Ship every collection guide, not just README; flattened harnesses keep child
+# skills beside the collection guide directory, so repair those relative links.
+install_skill_docs() {
+  local skill_dir=$1 runtime=$2 source destination done_verb status_target
+  status_target=../plan-status/SKILL.md
+  [ "$HARNESS" != claude ] || status_target=../../commands/plan-status.md
+  for source in "$skill_dir"/*.md; do
+    [ -f "$source" ] || continue
+    [ "$(basename "$source")" != SKILL.md ] || continue
+    destination="$DEST/skills/$runtime/$(basename "$source")"
+    if [ "$runtime" != feature-planning ]; then
+      copy_file "$source" "$destination"
+    elif [ "$DRY_RUN" -eq 1 ]; then
+      log "$(write_label "$destination" RENDER REPLACE) $source -> $destination"
+    else
+      done_verb=$(write_label "$destination" rendered replaced)
+      mkdir -p "$(dirname -- "$destination")"
+      sed -e 's|](plan-spec/|](../plan-spec/|g' \
+          -e "s|](plan-status/SKILL.md|]($status_target|g" "$source" > "$destination"
+      log "$done_verb ${destination#$TARGET/}"
+    fi
+  done
+}
+
+warn_feature_planning_upgrade() {
+  selected feature-planning "$SKILLS_SPEC" || return 0
+  local name candidate found=0
+  for name in plan-init plan-add plan-write plan-dispatch task-planning; do
+    for candidate in "$DEST/skills/feature-planning/$name/SKILL.md" \
+                     "$DEST/skills/$name/SKILL.md"; do
+      if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+        printf 'WARNING: stale feature-planning v1 skill: %s (preserved)\n' "$candidate" >&2
+        found=1
+      fi
+    done
+    case "$HARNESS" in
+      claude) candidate="$DEST/commands/$name.md" ;;
+      pi) candidate="$DEST/prompts/$name.md" ;;
+      *) continue ;;
+    esac
+    if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+      printf 'WARNING: stale feature-planning v1 command: %s (preserved)\n' "$candidate" >&2
+      found=1
+    fi
+  done
+  if [ "$HARNESS" = claude ] && [ -e "$DEST/commands/plan-spec.md" ]; then
+    printf 'WARNING: stale internal helper command: %s (v2 uses a native internal skill; preserved)\n' "$DEST/commands/plan-spec.md" >&2
+    found=1
+  fi
+  if [ "$found" -eq 1 ]; then
+    printf 'WARNING: Review ownership/backups and obtain approval before removing only these obsolete generated files. Nothing is deleted. See the installed feature-planning/MIGRATION.md.\n' >&2
+  fi
 }
 
 install_copilot() {
@@ -1225,15 +1302,23 @@ install_claude() {
       runtime=$(runtime_name "$name") || continue
       selected "$runtime" "$SKILLS_SPEC" || continue
       if [ -f "$file/SKILL.md" ]; then
-        render_claude_command "$file/SKILL.md" "$DEST/commands/$runtime.md"
+        if [ "$(frontmatter_value "$file/SKILL.md" user-invocable)" = false ]; then
+          copy_tree "$file" "$DEST/skills/$runtime"
+        else
+          render_claude_command "$file/SKILL.md" "$DEST/commands/$runtime.md"
+        fi
       else
         for child in "$file"/*; do
           [ -f "$child/SKILL.md" ] || continue
           child_name=$(basename "$child")
-          render_claude_command "$child/SKILL.md" "$DEST/commands/$child_name.md"
+          if [ "$(frontmatter_value "$child/SKILL.md" user-invocable)" = false ]; then
+            copy_tree "$child" "$DEST/skills/$child_name"
+          else
+            render_claude_command "$child/SKILL.md" "$DEST/commands/$child_name.md"
+          fi
         done
       fi
-      install_skill_readme "$file" "$runtime"
+      install_skill_docs "$file" "$runtime"
     done
   fi
 }
@@ -1312,20 +1397,26 @@ install_pi() {
       runtime=$(runtime_name "$name") || continue
       selected "$runtime" "$SKILLS_SPEC" || continue
       if [ -f "$file/SKILL.md" ]; then
+        copy_tree "$file" "$DEST/skills/$runtime"
         render_pi_skill "$file/SKILL.md" "$DEST/skills/$runtime/SKILL.md"
       else
         for child in "$file"/*; do
           [ -f "$child/SKILL.md" ] || continue
           child_name=$(basename "$child")
+          copy_tree "$child" "$DEST/skills/$child_name"
           render_pi_skill "$child/SKILL.md" "$DEST/skills/$child_name/SKILL.md"
+          if [ "$runtime" = feature-planning ]; then
+            render_pi_plan_alias "$child/SKILL.md" "$child_name"
+          fi
         done
       fi
-      install_skill_readme "$file" "$runtime"
+      install_skill_docs "$file" "$runtime"
     done
   fi
   install_pi_models
 }
 
+warn_feature_planning_upgrade
 case "$HARNESS" in
   copilot) install_copilot ;;
   claude) install_claude ;;
