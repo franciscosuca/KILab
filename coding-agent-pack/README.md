@@ -36,7 +36,7 @@ If a reusable core item is specific to one harness, suffix its name with `-copil
 | **Scope** | project only | project or global | project or global |
 | **Interactive questionnaire** | ✅ | ✅ | ✅ |
 | **Agents** | ✅ (`.agent.md`) | ✅ (rendered with Claude frontmatter) | ✅ (converted to `SKILL.md`) |
-| **Skills** | ✅ (`SKILL.md`) | ✅ (as Claude commands) | ✅ (`SKILL.md`) |
+| **Skills** | ✅ (`SKILL.md`) | ✅ (as Claude commands; native skill directory when a skill bundles files) | ✅ (`SKILL.md` plus bundled files) |
 | **Optional extensions** | — | — | ✅ bundled extensions + Pi packages |
 | **Local models** | — | — | ✅ template (static) **or** live scan (LM Studio / oMLX) |
 | **Install path** | `.github/` | `.claude/` or `~/.claude/` | `.pi/` or `~/.pi/agent/` |
@@ -120,6 +120,28 @@ Preview the discovered models, then apply the update:
 ```
 
 Run those commands from `coding-agent-pack/`. LM Studio's API must be available (or its `lms` CLI must be installed for the local-catalog fallback); oMLX must be reachable. If oMLX cannot be queried, the script leaves the config unchanged. Pass `--config /path/to/models.json` to target a different Pi config.
+
+## Skills that bundle files
+
+A core skill is a directory with a `SKILL.md`. It may also carry supporting files (`scripts/`, `assets/`, `references/`). The installer keeps them with the skill:
+
+| Harness | Skill with only `SKILL.md` | Skill with supporting files |
+|---|---|---|
+| Copilot | whole directory copied to `.github/skills/<name>/` | same |
+| Claude | rendered as a command, `<scope>/commands/<name>.md` | installed as a native skill directory, `<scope>/skills/<name>/` (a command is one file and would lose the scripts) |
+| Pi | `SKILL.md` rewritten with Pi frontmatter | same, plus every other file copied next to it with permissions preserved, so scripts stay executable |
+
+Bundled scripts must be executable; `validate-pack.sh` checks that and their syntax. Keep personal data out of skills: they are committed to a public repository.
+
+### `cv-generator`
+
+Builds a one-page A4 CV (self-contained HTML plus PDF, sidebar layout) tailored to a job posting, in English, Spanish or German (several languages in one go). Needs `python3`, and `node` + `npm` with network access on the first run (Playwright and Chromium are installed once into `~/.cache/cv-generator`).
+
+```bash
+./scripts/install-pack.sh --harness pi --scope global --skills cv-generator
+```
+
+The skill ships only the engine and placeholder example data. Your photo, QR code, verified profile and base CV live in `~/.config/cv-generator/` (override with `CV_GENERATOR_HOME`); on first use the agent interviews you and creates `profile.md` and `base-cv.json` there, so installing or updating the skill never touches your data. Translations live next to the base CV as `base-cv.<lang>.json`. Use it with `/skill:cv-generator <job URL or description, language>`.
 
 ## Installation
 

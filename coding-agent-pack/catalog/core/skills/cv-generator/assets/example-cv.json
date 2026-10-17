@@ -1,0 +1,54 @@
+{
+  "lang": "en",
+  "name": "Alex Example",
+  "role": "Senior Software Engineer",
+  "contact": [
+    { "label": "Email", "value": "alex@example.com", "href": "mailto:alex@example.com" },
+    { "label": "Phone", "value": "+00 000 0000000" },
+    { "label": "Location", "value": "Example City, Country", "note": "(open to relocation)" },
+    { "label": "LinkedIn", "value": "in/alex-example", "href": "https://www.linkedin.com/in/alex-example" },
+    { "label": "GitHub", "value": "alex-example", "href": "https://github.com/alex-example" }
+  ],
+  "education": [
+    {
+      "title": "M.Sc. Computer Science",
+      "place": "Example University, Country, 2018",
+      "detail": "Thesis on distributed systems for resource-constrained devices."
+    },
+    { "title": "B.Sc. Software Engineering", "place": "Sample Institute of Technology, Country, 2016" }
+  ],
+  "languages": [
+    { "name": "English", "level": "C2", "note": "professional fluency" },
+    { "name": "German", "level": "B2" }
+  ],
+  "certifications": [{ "year": "2023", "name": "Example Cloud Practitioner" }],
+  "additional": "For projects and open-source work, visit [**example.com**](https://example.com/).",
+  "profile": "Software engineer with 8 years of experience building and operating **backend services** and **cloud platforms**. Strong in **CI/CD**, **containers** and **observability**; comfortable owning a feature from specification to production.",
+  "competencies": [
+    { "label": "Languages", "text": "TypeScript, Python, Go, SQL" },
+    { "label": "Cloud & containers", "text": "Docker, Kubernetes, Terraform, AWS (ECS, Lambda, S3)" },
+    { "label": "CI/CD & automation", "text": "GitHub Actions, GitLab CI, trunk-based development, release automation" },
+    { "label": "Observability", "text": "Prometheus, Grafana, OpenTelemetry, structured logging" }
+  ],
+  "experience": [
+    {
+      "title": "**Senior Software Engineer**, Example Corp, Country",
+      "when": "01/2021 – present",
+      "desc": "Order-management platform serving 2M monthly users.",
+      "bullets": [
+        "**Service delivery:** designed and shipped an event-driven order service in TypeScript, replacing a monolithic module and halving deployment time.",
+        "**CI/CD:** own the GitHub Actions pipelines for 12 services, including container builds, automated tests and progressive rollouts.",
+        "**Operations:** introduced dashboards and alert rules that cut mean time to detect incidents."
+      ]
+    },
+    {
+      "title": "**Software Engineer**, Sample Systems, Country",
+      "when": "06/2017 – 12/2020",
+      "desc": "Telemetry backend for industrial customers.",
+      "bullets": [
+        "Built ingestion APIs and a time-series storage layer in Python and Go.",
+        "Automated environment provisioning with Terraform and Docker Compose."
+      ]
+    }
+  ]
+}
