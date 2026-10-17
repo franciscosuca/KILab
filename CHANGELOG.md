@@ -1,3 +1,10 @@
+## [2.10.0](https://github.com/franciscosuca/KILab/compare/v2.9.0...v2.10.0) (2026-10-17)
+
+### Features
+
+* **add cv-generator skill and install bundled skill files:** feat(skills): add cv-generator skill and install bundled skill files ([427e565](https://github.com/franciscosuca/KILab/commit/427e56532b8247070f105a1cece3533bff4cd181))
+* **cv-generator supports English, Spanish and German CVs:** feat(skills): cv-generator supports English, Spanish and German CVs ([c0482a6](https://github.com/franciscosuca/KILab/commit/c0482a641eb0ddaff16ee06a089c2b697c9e692a))
+
 ## [2.9.0](https://github.com/franciscosuca/KILab/compare/v2.8.0...v2.9.0) (2026-10-16)
 
 ### Features
