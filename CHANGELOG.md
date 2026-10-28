@@ -1,3 +1,10 @@
+## [2.11.0](https://github.com/franciscosuca/KILab/compare/v2.10.0...v2.11.0) (2026-10-28)
+
+### Features
+
+* **add sync-cv-generator for up to date cv-generator skills:** feat: add sync-cv-generator for up to date cv-generator skills ([49527f3](https://github.com/franciscosuca/KILab/commit/49527f388e4a659cc51237f819f6061250f55875))
+* **update cv-generator with template v2 and ATS rules.:** feat: update cv-generator with template v2 and ATS rules. ([c95485c](https://github.com/franciscosuca/KILab/commit/c95485cbde6b3b88ef04c609b85828ecec222bb3))
+
 ## [2.10.0](https://github.com/franciscosuca/KILab/compare/v2.9.0...v2.10.0) (2026-10-17)
 
 ### Features
