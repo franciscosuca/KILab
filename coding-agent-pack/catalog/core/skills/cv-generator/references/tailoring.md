@@ -32,3 +32,11 @@ Build a table (show it to the user): requirement → evidence from the user's `p
 
 ## 7. Final answer (keep it short)
 Paths of the generated `.json`, `.html` and `.pdf`; font size chosen; the requirement→evidence table in 5-10 lines; gaps; items to confirm. Do not paste the whole CV.
+
+## 8. Wording rules (ATS and AI screeners — apply to every text field)
+- No first-person pronouns: not "I", not "my" ("My core competencies are…" → "Core competencies include…"). Experience bullets start with a past-tense action verb.
+- No explanatory "so / so that" clauses; state the implementation and the outcome directly ("…to enforce GitOps versioning").
+- No arrow symbols (→) in project or tech text; use prepositions ("deployed with GitHub Actions to Cloud Run"). Avoid LLM-tell words like "leveraging" and soft filler ("bridge user needs into clear specs").
+- Keep concrete tool and protocol names; they read as authentic.
+- Back every keyword in the profile with at least one experience bullet or project: an ATS rewards the keyword, a recruiter discounts a claim the bullets do not support.
+- If the user supplies their own intro text, check it against `profile.md` before applying it; year counts must follow from the role dates. On conflict, ask which fact is right and fix `profile.md` first.

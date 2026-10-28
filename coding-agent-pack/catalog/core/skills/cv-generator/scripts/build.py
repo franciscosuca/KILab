@@ -6,7 +6,7 @@ Usage: build.py <cv.json> <out.html> [--no-qr] [--no-photo]
 No third-party dependencies. Inline markup in text fields: **bold**, `code`, [text](url).
 
 Personal data (photo, QR code, profile, base CV) lives in the user-data directory, never in the skill:
-  $CV_GENERATOR_HOME, default ~/.config/cv-generator   (photo.jpg|png, qr.png, profile.md, base-cv.json, base-cv.<lang>.json)
+  $CV_GENERATOR_HOME, default ~/.config/cv-generator   (profile.md, base-cv.json, base-cv.<lang>.json, photo.jpg|png, qr.png)
 """
 import base64, html, json, os, re, sys
 from pathlib import Path
@@ -39,16 +39,17 @@ def b64(path: Path) -> str:
 
 
 def asset(spec, defaults, base: Path):
-    """Resolve photo/QR: explicit path (relative to the CV JSON) > user-data dir default > None (omitted)."""
+    """Resolve photo/QR: explicit path (relative to the CV JSON) > user-data dir > bundled skill asset > None (omitted)."""
     if spec:
         p = Path(spec).expanduser()
         p = p if p.is_absolute() else base / p
         if not p.exists():
             sys.exit(f"asset not found: {p}")
         return p
-    for name in defaults:
-        if (HOME / name).exists():
-            return HOME / name
+    for d in (HOME, SKILL / "assets"):
+        for name in defaults:
+            if (d / name).exists():
+                return d / name
     return None
 
 
@@ -99,7 +100,8 @@ def build(cv: dict, no_qr=False, no_photo=False, base: Path = Path(".")) -> str:
 
     additional = ""
     if cv.get("additional"):
-        additional = f'    <h2>{html.escape(L["additional"])}</h2>\n    <p>{inline(cv["additional"])}</p>'
+        additional = (f'      <section>\n        <h3>{html.escape(L["additional"])}</h3>\n'
+                      f'        <p>{inline(cv["additional"])}</p>\n      </section>')
 
     # --- main ---
     qr = ""

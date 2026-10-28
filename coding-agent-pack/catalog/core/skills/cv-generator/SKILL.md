@@ -7,7 +7,7 @@ user-invocable: true
 
 # CV generator
 
-Turns a request (job posting, target role, language, extra facts) into a tailored one-page CV: grey sidebar (photo, contact, education, languages, certifications, additional), grey name header with optional QR code, then Profile, Core competencies and Experience. Output is a self-contained `.html` and a one-page `.pdf`.
+Turns a request (job posting, target role, language, extra facts) into a tailored one-page CV: grey sidebar (photo, contact, core competencies, education, languages), grey name header with optional QR code, then Profile, Experience, extra sections and Additional. Output is a self-contained `.html` and a one-page `.pdf`.
 
 **Never invent claims.** The only sources of facts are the user's `profile.md` (see "User data") and what the user says in the current conversation. Read its "Do NOT claim" section before writing any text.
 
